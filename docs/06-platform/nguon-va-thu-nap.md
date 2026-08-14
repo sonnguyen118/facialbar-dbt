@@ -10,7 +10,7 @@ Bốn nhóm nguồn, ba cơ chế thu nạp (theo lô, CDC, streaming), cấu h�
 
 ## 1. Bốn nhóm nguồn
 
-| Nhóm | Là gì | Hệ thống cụ thể | Loại dữ liệu | Đặc tính |
+| Nhóm | Định nghĩa | Hệ thống cụ thể | Loại dữ liệu | Đặc tính |
 |---|---|---|---|---|
 | **A. Web / Mobile App** | Nơi phát sinh **hành vi** khách hàng | App iOS/Android, Website | Clickstream event (JSON) | Lượng lớn, bán cấu trúc, **chỉ thêm mới** |
 | **B. OLTP Database** | Nơi lưu **giao dịch nghiệp vụ** chính | PostgreSQL/MySQL của hệ thống booking | Bảng quan hệ | Có cấu trúc, **bị UPDATE/DELETE** |
@@ -33,7 +33,7 @@ Bốn nhóm nguồn, ba cơ chế thu nạp (theo lô, CDC, streaming), cấu h�
 | `ad_spend` | Facebook/Google Ads API | — | Chú ý API **cập nhật lại số liệu 7 ngày** |
 | `web_traffic` | GA4 | — | Chỉ dùng ở mức tổng hợp, GA4 có lấy mẫu |
 
-> 💡 **Khái niệm System of Record (SoR):** với mỗi trường dữ liệu, phải chỉ định **đúng một** hệ thống là nguồn chân lý. Không có SoR → khi 2 nguồn lệch nhau, không ai biết tin cái nào, và cuộc họp sẽ biến thành tranh luận vô tận.
+> **Khái niệm System of Record (SoR):** với mỗi trường dữ liệu, phải chỉ định **đúng một** hệ thống là nguồn chân lý. Không có SoR → khi 2 nguồn lệch nhau, không ai biết tin cái nào, và cuộc họp sẽ biến thành tranh luận vô tận.
 
 ---
 
@@ -41,7 +41,7 @@ Bốn nhóm nguồn, ba cơ chế thu nạp (theo lô, CDC, streaming), cấu h�
 
 Ingestion là việc đưa dữ liệu từ hệ thống nguồn vào data platform.
 
-| Cơ chế | Là gì | Dùng khi | Nguồn ở Facial Bar | Công cụ | Độ trễ |
+| Cơ chế | Định nghĩa | Dùng khi | Nguồn ở Facial Bar | Công cụ | Độ trễ |
 |---|---|---|---|---|---|
 | **Batch** (theo lô) | Định kỳ lấy trọn một khối dữ liệu | Không cần real-time, nguồn là API/file | Facebook Ads, Google Ads, GA4, danh mục dịch vụ | Airflow + Python/Spark | Giờ → Ngày |
 | **CDC** (Change Data Capture) | Đọc **log thay đổi** của database để bắt từng INSERT/UPDATE/DELETE | Cần biết dữ liệu OLTP thay đổi gì, không muốn quét lại cả bảng | OLTP: customer, booking, payment | Debezium → Kafka | Giây |
@@ -102,7 +102,7 @@ flowchart TD
 
 ## 3. Kafka và Schema Registry
 
-| Khái niệm | Là gì | Cấu hình cho Facial Bar |
+| Khái niệm | Định nghĩa | Cấu hình cho Facial Bar |
 |---|---|---|
 | **Topic** | Kênh chứa các event cùng loại | `facialbar.booking.v1`, `facialbar.payment.v1`, `facialbar.customer.v1`, `facialbar.feedback.v1`, `facialbar.cdc.booking` |
 | **Partition** | Topic được chia nhỏ để xử lý song song | 6 partition/topic, key = `customer_id` |

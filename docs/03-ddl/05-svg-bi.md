@@ -8,11 +8,9 @@ Quy trình làm mới: [04-etl/load-fact.md](../04-etl/load-fact.md#5-làm-mới
 
 ---
 
-## 1. Hai bảng đã thiết kế
+## 1. Bảng cầu nối `dm.bridge_sales_promotion`
 
-> Bridge table `dm.bridge_sales_promotion` đã chuyển sang [04-dm-fact.md](04-dm-fact.md).
-
-### Aggregate table
+Bảng này thuộc schema **`dm`**, không thuộc `svg_bi`. DDL đặt tại đây vì nó được tạo ở bước 08 cùng với các bảng tổng hợp. Vì vậy con số "6 bảng `svg_bi`" ở mục Danh mục bảng không tính bảng này. Sáu bảng tổng hợp bắt đầu từ mục 2.
 
 ```sql
 CREATE TABLE dm.bridge_sales_promotion (
@@ -42,7 +40,7 @@ HAVING ABS(SUM(allocation_factor) - 1.0) > 0.000001;
 > ⚠️ **Quy tắc dùng bridge — bắt buộc phải viết vào Data Catalog:**
 > Join `fact_sales_line` với `bridge_sales_promotion` **sẽ nhân số dòng fact lên** theo số promotion. Sau khi join, **chỉ được** dùng `allocated_discount_amount`; **cấm** dùng `net_amount` (sẽ bị nhân đôi). Đây chính là cái giá phải trả để phân tích được quan hệ nhiều-nhiều, và nó phải được ghi ra thành văn — nếu không, sẽ có người viết `SUM(net_amount)` sau khi join bridge.
 
-### Aggregate table
+## 2. `agg_revenue_daily_salon` và `agg_customer_360`
 
 ```sql
 CREATE TABLE svg_bi.agg_revenue_daily_salon (
@@ -66,6 +64,8 @@ CREATE TABLE svg_bi.agg_revenue_daily_salon (
     no_show_count       INT NOT NULL,
     busy_minutes        INT NOT NULL,
     available_minutes   INT NOT NULL,
+    -- CSAT ở mức ngày × chi nhánh: lưu tử số và mẫu số, không lưu tỷ lệ (mục 2.1)
+    rating_sum          INT NOT NULL,
     response_count      INT NOT NULL,
     _run_id             UNIQUEIDENTIFIER NOT NULL,
     _refreshed_at       DATETIME2(3) NOT NULL,
@@ -117,7 +117,7 @@ Cột `feature_cutoff_date` là điểm nối trực tiếp với nguyên tắc 
 
 ---
 
-## 2. `agg_funnel_daily` — Phễu chuyển đổi
+## 3. `agg_funnel_daily` — Phễu chuyển đổi
 
 Grain: 1 dòng = 1 ngày × 1 salon. Nguồn: `fact_booking_lifecycle` + `crt.service_view`.
 
@@ -174,7 +174,7 @@ WHERE  d.year_month = 202608;
 
 ---
 
-## 3. `agg_service_perf_monthly` — Hiệu quả dịch vụ
+## 4. `agg_service_perf_monthly` — Hiệu quả dịch vụ
 
 Grain: 1 dòng = 1 tháng × 1 salon × 1 dịch vụ.
 
@@ -216,7 +216,7 @@ CREATE TABLE svg_bi.agg_service_perf_monthly (
 
 ---
 
-## 4. `agg_therapist_utilization_daily` — Năng suất kỹ thuật viên
+## 5. `agg_therapist_utilization_daily` — Năng suất kỹ thuật viên
 
 Grain: 1 dòng = 1 ngày × 1 kỹ thuật viên.
 
@@ -257,7 +257,7 @@ CREATE TABLE svg_bi.agg_therapist_utilization_daily (
 
 ---
 
-## 5. `agg_cohort_retention` — Giữ chân khách theo nhóm
+## 6. `agg_cohort_retention` — Giữ chân khách theo nhóm
 
 Grain: 1 dòng = 1 cohort (tháng khách đến lần đầu) × 1 tháng thứ N kể từ đó.
 
@@ -310,7 +310,7 @@ ORDER  BY cohort_year_month;
 | 5 | `agg_therapist_utilization_daily` | ngày × KTV | ~140.000 | `fact_treatment`, `lnd.hr_shift` |
 | 6 | `agg_cohort_retention` | cohort × tháng thứ N | ~2.000 | `fact_sales_line` |
 
-**Tổng: 6 bảng.** Toàn bộ dùng rowstore clustered — bảng nhỏ, truy vấn theo khoảng ngày, không cần columnstore.
+**Tổng: 6 bảng `svg_bi`**, chưa tính `dm.bridge_sales_promotion` ở mục 1. Toàn bộ dùng rowstore clustered — bảng nhỏ, truy vấn theo khoảng ngày, không cần columnstore.
 
 ## Nguyên tắc thiết kế bảng tổng hợp
 

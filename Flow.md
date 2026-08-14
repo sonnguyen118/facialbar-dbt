@@ -2,7 +2,7 @@
 
 **Phiên bản 1.0 · 14/08/2026**
 
-Đường đi của dữ liệu từ hệ thống nguồn đến báo cáo, qua 6 chặng. Mỗi chặng: mô tả ngắn, quyết định thiết kế, link tới đặc tả.
+Đường đi của dữ liệu từ hệ thống nguồn đến báo cáo, qua 6 chặng (mục 1–6), kèm 4 mục xuyên suốt: điều phối, luồng quay lại, quy mô, ràng buộc thiết kế. Mỗi chặng: mô tả ngắn, quyết định thiết kế, link tới đặc tả.
 
 Luồng theo góc nhìn phân tích dữ liệu (nghiệp vụ → chỉ tiêu): [Flow-DA.md](Flow-DA.md) · Tổng thiết kế: [README.md](README.md) · Sơ đồ gốc: [Flow.jpg](Flow.jpg)
 
@@ -12,7 +12,7 @@ Luồng theo góc nhìn phân tích dữ liệu (nghiệp vụ → chỉ tiêu):
 
 ## SƠ ĐỒ
 
-Số hoá nguyên trạng [Flow.jpg](Flow.jpg): 20 hộp, 18 mũi tên.
+Số hoá nguyên trạng [Flow.jpg](Flow.jpg): 19 hộp trong 2 khung nhóm (hồ dữ liệu S3, SQL Server), 18 mũi tên — 15 liền và 3 nét đứt.
 
 ```mermaid
 flowchart TD
@@ -69,7 +69,7 @@ flowchart TD
     classDef ctlbox fill:#1f2937,stroke:#9ca3af,color:#f9fafb
 ```
 
-Chú thích màu, nguyên văn trong ảnh: *Tím là bước xử lý, xanh lá là nơi lưu dữ liệu. Nét đứt là nhánh phụ và luồng quay lại.* Ảnh dùng thêm vàng cho cổng kiểm soát, đỏ cho vùng lỗi, xám cho thành phần không lưu dữ liệu nghiệp vụ.
+Chú thích màu, nguyên văn trong ảnh: *Tím là bước xử lý, xanh lá là nơi lưu dữ liệu. Nét đứt là nhánh phụ và luồng quay lại.* Ảnh dùng thêm vàng cho cổng kiểm tra chất lượng, đỏ cho vùng lỗi, xám cho thành phần ngoài phạm vi thiết kế kho: nguồn, công cụ báo cáo, bảng điều khiển và khung điều phối.
 
 ---
 
@@ -94,7 +94,7 @@ Chú thích màu, nguyên văn trong ảnh: *Tím là bước xử lý, xanh lá
 
 ## 2. THU NẠP
 
-Hai nhánh song song, chọn theo độ trễ cho phép ở bảng trên.
+Hai nhánh trong sơ đồ — theo lô và qua Kafka — tách thành 3 cơ chế thu nạp. Chọn theo độ trễ cho phép ở bảng trên và đặc tính nguồn (cơ sở dữ liệu, API, hay ứng dụng tự đẩy sự kiện).
 
 | Nhánh | Dùng cho | Công cụ | Độ trễ |
 |---|---|---|---|
@@ -107,9 +107,9 @@ Hai nhánh song song, chọn theo độ trễ cho phép ở bảng trên.
 
 **Chi phí quảng cáo nạp lại 7 ngày mỗi lần chạy.** Nền tảng quảng cáo còn điều chỉnh số liệu trong 7 ngày; chỉ nạp ngày hôm qua thì số của tuần trước cố định ở giá trị tạm, làm chi phí thu hút khách mới sai lệch có hệ thống.
 
-**Ngưỡng ghi file của Kafka Connect: 128 MB, 100.000 dòng, hoặc 15 phút — cái nào đến trước.** Ngưỡng này để tránh sinh hàng triệu file nhỏ; Spark đọc 1 triệu file 2 KB chậm hơn nhiều lần so với đọc cùng khối lượng ở vài trăm file lớn.
+**Ngưỡng ghi file của Kafka Connect: 128 MB, 100.000 dòng, hoặc 15 phút — cái nào đến trước.** Ngưỡng này để tránh sinh hàng triệu file nhỏ; Spark đọc 1 triệu file 2 KB chậm gấp khoảng 10 lần so với cùng khối lượng ở 200 file 128 MB, do chi phí mở từng đối tượng trên S3.
 
-**Không phải dữ liệu nào cũng đi Kafka.** Kafka cần cluster, monitoring, Schema Registry và người biết vận hành. Dữ liệu chi phí quảng cáo cập nhật 1 lần/ngày với độ trễ cho phép 24 giờ — đẩy qua Kafka không mang lại gì mà thêm 3 thành phần có thể hỏng.
+**Không phải dữ liệu nào cũng đi Kafka.** Kafka cần cluster, monitoring, Schema Registry và người biết vận hành. Dữ liệu chi phí quảng cáo cập nhật 1 lần/ngày với độ trễ cho phép 24 giờ — đẩy qua Kafka không mang lại gì mà thêm 3 thành phần hạ tầng có thể hỏng (Kafka cluster, Kafka Connect, Schema Registry).
 
 → [3 cơ chế thu nạp, cấu hình Kafka và Schema Registry](docs/06-platform/nguon-va-thu-nap.md#2-ba-cơ-chế-thu-nạp)
 
@@ -144,7 +144,7 @@ Bốn việc theo đúng thứ tự đó. Kết thúc: file đã nạp chuyển 
 
 **Watermark** — ghi lại đã xử lý đến đâu. Bốn loại tuỳ nguồn: theo thời gian, theo LSN của CDC, theo phân vùng ngày, theo danh sách file. Thiếu watermark thì mỗi lần chạy phải quét lại toàn bộ, hoặc phải ghi cứng ngày trong code và mất khả năng nạp bù lịch sử.
 
-**Chạy lại không sai số** — ba cách thực hiện: xoá-nạp theo phân vùng (dùng cho Fact theo ngày), `MERGE` theo khoá nghiệp vụ (dùng cho dim và bảng bị `UPDATE`), `INSERT` có kiểm tra tồn tại (bảng chỉ thêm mới, khối lượng nhỏ). Pipeline sẽ hỏng và sẽ có người bấm retry; không đảm bảo điều này thì doanh thu tự cộng dồn theo số lần retry.
+**Chạy lại không sai số** — ba cách thực hiện: xoá-nạp theo phân vùng (dùng cho Fact theo ngày), `MERGE` theo khoá nghiệp vụ (dùng cho dim và bảng bị `UPDATE`), `INSERT` có kiểm tra tồn tại (bảng chỉ thêm mới, khối lượng nhỏ). Sự cố hạ tầng dẫn tới chạy lại là tình huống thường trực trong vận hành; không bảo đảm điều kiện này thì doanh thu cộng dồn theo số lần chạy lại.
 
 **Chống nạp trùng có 2 lớp:** `UNIQUE` trên độ hạt của Fact, và `ctl.load_audit` khoá duy nhất trên hash nội dung file — nguồn đổi tên file rồi gửi lại cùng nội dung vẫn bị chặn.
 
@@ -154,7 +154,7 @@ Bốn việc theo đúng thứ tự đó. Kết thúc: file đã nạp chuyển 
 
 ## 5. SQL SERVER
 
-Bảy thành phần: 4 tầng dữ liệu, 1 cổng kiểm soát, 1 vùng cách ly, 1 nhóm bảng điều khiển.
+Bảy thành phần: 4 tầng dữ liệu, 1 cổng kiểm tra chất lượng, 1 vùng cách ly, 1 nhóm bảng điều khiển.
 
 | # | Thành phần | Số bảng | Vai trò | Ai truy cập được |
 |---|---|---|---|---|
@@ -162,7 +162,7 @@ Bảy thành phần: 4 tầng dữ liệu, 1 cổng kiểm soát, 1 vùng cách 
 | 5.2 | `crt`, làm sạch nghiệp vụ | 25 + 1 view | **Đối soát với nguồn** | Dữ liệu, Kiểm toán |
 | 5.3 | Cổng kiểm tra chất lượng | 56 quy tắc | Chặn dữ liệu không đạt | — |
 | 5.4 | `qtn`, vùng cách ly | 1 + 1 view | Giữ dòng lỗi chờ xử lý | Dữ liệu, chủ sở hữu miền |
-| 5.5 | `dm`, datamart | 13 dim + 10 Fact + 1 cầu nối | **Chốt định nghĩa chỉ tiêu** | Dữ liệu, Phân tích |
+| 5.5 | `dm`, kho phân tích | 13 dim + 10 Fact + 1 cầu nối | **Chốt định nghĩa chỉ tiêu** | Dữ liệu, Phân tích |
 | 5.6 | `svg_bi`, phục vụ BI | 6 | Bảng tổng hợp sẵn | Toàn bộ qua công cụ báo cáo |
 | 5.7 | `ctl`, bảng điều khiển | 8 | Trạng thái pipeline | Dữ liệu |
 
@@ -170,7 +170,7 @@ Bảy thành phần: 4 tầng dữ liệu, 1 cổng kiểm soát, 1 vùng cách 
 
 Không index, ghi đè mỗi lần chạy, mọi cột nghiệp vụ kiểu `NVARCHAR(4000)`.
 
-**Quyết định:** để kiểu rộng nhằm **bảng này không bao giờ fail lúc nạp**. Mục đích là tách lỗi vận chuyển khỏi lỗi dữ liệu — nạp `lnd` thất bại là lỗi hạ tầng, nạp `crt` thất bại là lỗi dữ liệu. Trộn hai loại lỗi làm việc chẩn đoán sự cố ngoài giờ trở nên bất khả thi.
+**Quyết định:** để kiểu rộng nhằm loại bỏ lỗi ép kiểu ở bước nạp `lnd` với mọi chuỗi dưới 4.000 ký tự. Mục đích là tách lỗi vận chuyển khỏi lỗi dữ liệu — nạp `lnd` thất bại là lỗi hạ tầng, nạp `crt` thất bại là lỗi dữ liệu. Trộn hai loại lỗi làm thời gian khoanh vùng sự cố ngoài giờ tăng lên nhiều lần.
 
 Không giữ lịch sử vì lịch sử đã nằm ở `raw` trên S3.
 
@@ -180,23 +180,23 @@ Không giữ lịch sử vì lịch sử đã nằm ở `raw` trên S3.
 
 Mô hình 3NF, giữ đúng độ hạt của nguồn, chưa áp quy tắc nghiệp vụ.
 
-**Vai trò phân xử:** `crt` khớp POS thì lỗi ở `dm`; `crt` lệch POS thì lỗi ở thu nạp. Không có tầng này thì không khoanh được vùng lỗi.
+**Vai trò phân xử:** `crt` lệch POS trong 0,1% (`DQ-RECON-001`) thì lỗi nằm ở `dm`; lệch quá 0,1% thì lỗi nằm ở thu nạp. Không có tầng này thì không khoanh được vùng lỗi.
 
-**Việc khó nhất là gộp định danh.** Cùng một khách có 3 mã ở app, POS và GA4. Thứ tự ưu tiên gộp: số điện thoại chuẩn E.164 → email chữ thường → (tên + ngày sinh + salon) → thủ công. Độ tin cậy dưới 0,80 **không tự động gộp**, đưa vào danh sách chờ người rà — gộp sai hai khách thành một rất khó phát hiện và khó tách lại.
+**Việc khó nhất là gộp định danh.** Cùng một khách có 3 mã ở app, POS và GA4. Thứ tự ưu tiên gộp: số điện thoại chuẩn E.164 → email chữ thường → (tên + ngày sinh + chi nhánh) → thủ công. Độ tin cậy dưới 0,80 **không tự động gộp**, đưa vào danh sách chờ người rà — gộp sai hai khách thành một không sinh thông báo lỗi nào, và việc tách lại đòi ghi lại toàn bộ lịch sử SCD2 của khoá bị ảnh hưởng.
 
 → [25 bảng + 1 view, thứ tự tạo](docs/03-ddl/02-crt.md)
 
 ### 5.3. Cổng kiểm tra chất lượng — *Lỗi thì dừng nhánh*
 
-56 quy tắc trên 6 tiêu chí: đầy đủ (6), chính xác (13), nhất quán (6), duy nhất (9), hợp lệ (9), kịp thời (6), cộng nhóm mô hình chiều (7).
+56 quy tắc trên 7 nhóm: đầy đủ (6), chính xác (13), nhất quán (6), duy nhất (9), hợp lệ (9), kịp thời (6), mô hình chiều (7).
 
 | Mức | Số quy tắc | Hành vi | Thông báo |
 |---|---|---|---|
-| Chặn | 44 | Dừng nhánh, dòng lỗi sang `qtn`, không nạp `dm` | Gọi điện + tin nhắn |
-| Cảnh báo | 11 | Vẫn nạp, gắn dấu hiệu trên báo cáo | Tin nhắn cho chủ sở hữu miền |
+| Chặn | 43 | Dừng nhánh, dòng lỗi sang `qtn`, không nạp `dm` | P1: gọi điện + Slack |
+| Cảnh báo | 12 | Vẫn nạp, gắn dấu hiệu trên báo cáo | P2: Slack cho chủ sở hữu dữ liệu nghiệp vụ |
 | Ghi nhận | 1 | Chỉ ghi nhật ký | Email tổng hợp hằng ngày |
 
-**Quyết định:** cổng chỉ dừng **nhánh** bị lỗi. `fact_payment` bị chặn thì `fact_feedback` vẫn nạp bình thường. Dừng cả hệ thống vì một bảng lỗi khiến người vận hành dần tắt luôn cổng cho mọi thứ chạy được — lúc đó cổng mất tác dụng hoàn toàn.
+**Quyết định:** cổng chỉ dừng **nhánh** bị lỗi. `fact_payment` bị chặn thì `fact_feedback` vẫn nạp bình thường. Dừng cả hệ thống vì một bảng lỗi tạo áp lực vận hành dẫn tới vô hiệu hoá cổng kiểm tra, làm mất toàn bộ tác dụng của 56 quy tắc.
 
 → [56 quy tắc kèm SQL kiểm tra](docs/05-quality/dq-rules.md)
 
@@ -214,7 +214,7 @@ Nơi thay đổi độ hạt từ nguồn sang độ hạt phân tích, sinh kho
 
 **"Chốt định nghĩa"** nghĩa là mỗi chỉ tiêu định nghĩa **một lần duy nhất** tại tầng này. Ví dụ doanh thu có 4 cách hiểu đang cùng tồn tại — cả 4 được tính và lưu thành 4 cột tên riêng (`gross_amount`, `net_amount`, `net_excl_tax_amount`, và tiền thực thu ở `fact_payment`), không để tên chung chung là `revenue`.
 
-→ [Mô hình logic](docs/01-erd/) · DDL: [13 dim](docs/03-ddl/03-dm-dimension.md) · [10 Fact](docs/03-ddl/04-dm-fact.md)
+→ [Mô hình logic](docs/01-erd/) · DDL: [13 dim](docs/03-ddl/03-dm-dimension.md) · [10 Fact và 1 bảng cầu nối](docs/03-ddl/04-dm-fact.md)
 
 ### 5.6. `svg_bi` — *Bảng tổng hợp sẵn*
 
@@ -222,7 +222,7 @@ Nơi thay đổi độ hạt từ nguồn sang độ hạt phân tích, sinh kho
 
 **Quyết định:** không lưu tỷ lệ, chỉ lưu tử số và mẫu số. Tỷ lệ không cộng được — lưu sẵn tỷ lệ thì mọi phép tổng hợp lên mức cao hơn cho ra số sai.
 
-**Hạn chế cố hữu:** cột `COUNT(DISTINCT ...)` không tổng hợp tiếp được. `unique_customer_count` ở mức ngày × salon không cộng lên mức tháng được, vì khách đến 3 ngày sẽ bị đếm 3 lần. Ghi rõ vào từ điển chỉ tiêu và tạo bảng tổng hợp riêng ở mức tháng.
+**Hạn chế cố hữu:** cột `COUNT(DISTINCT ...)` không tổng hợp tiếp được. `unique_customer_count` ở mức ngày × chi nhánh không cộng lên mức tháng được, vì khách đến 3 ngày sẽ bị đếm 3 lần. Ghi rõ vào từ điển chỉ tiêu và tạo bảng tổng hợp riêng ở mức tháng.
 
 → [6 bảng tổng hợp](docs/03-ddl/05-svg-bi.md)
 
@@ -238,17 +238,17 @@ Thiếu nhóm bảng này thì câu hỏi *"số liệu hôm nay đã đủ chư
 
 ## 6. TIÊU THỤ
 
-### 6.1. Superset, Power BI — *Chỉ đọc datamart và svg_bi*
+### 6.1. Superset, Power BI — *Chỉ đọc kho phân tích và svg_bi*
 
-**Ranh giới bắt buộc:** công cụ báo cáo **cấm** truy cập `lnd`, `crt`, `ctl`. Hai tầng đầu chưa qua cổng kiểm tra chất lượng; để báo cáo đọc trực tiếp thì sẽ có ngày một báo cáo trình lãnh đạo được lập từ dữ liệu chưa kiểm định.
+**Ranh giới bắt buộc:** công cụ báo cáo cấm truy cập `lnd` và `crt`. Hai ngoại lệ: bảng điều khiển vận hành dữ liệu được đọc `ctl` và view `qtn.v_quarantine_summary`; bảng thời gian thực đọc trực tiếp từ Kafka. Cả hai không dùng cho báo cáo nghiệp vụ. Hai tầng đầu chưa qua cổng kiểm tra chất lượng; để báo cáo đọc trực tiếp thì không có cơ chế nào ngăn một báo cáo trình lãnh đạo được lập từ dữ liệu chưa qua cổng kiểm tra.
 
 8 bộ báo cáo → [Chỉ tiêu và báo cáo](docs/07-analytics/chi-tieu-va-bao-cao.md)
 
 ### 6.2. Bảng thời gian thực — *Đọc thẳng từ Kafka*
 
-Nhánh riêng, không qua hồ dữ liệu và không qua kho. Phục vụ 3 chỉ số vận hành: số khách đang trong salon, doanh thu tạm tính hôm nay, số booking mới trong 1 giờ.
+Nhánh riêng, không qua hồ dữ liệu và không qua kho. Phục vụ 3 chỉ số vận hành: số khách đang trong chi nhánh, doanh thu tạm tính hôm nay, số booking mới trong 1 giờ.
 
-**Đánh đổi cụ thể:** độ trễ dưới 1 phút, nhưng **chưa khử trùng lặp CDC, chưa đối soát với POS, chưa qua 56 quy tắc chất lượng**. Không dùng cho báo cáo tài chính. Báo cáo phải ghi rõ "số liệu tạm tính"; số chính thức lấy từ `datamart` sau 06:40 hôm sau.
+**Đánh đổi cụ thể:** độ trễ dưới 5 phút theo yêu cầu vận hành, nhưng **chưa khử trùng lặp CDC, chưa đối soát với POS, chưa qua 56 quy tắc chất lượng**. Không dùng cho báo cáo tài chính. Báo cáo phải ghi rõ "số liệu tạm tính"; số chính thức lấy từ kho phân tích `dm` sau 06:40 hôm sau.
 
 ---
 
@@ -256,7 +256,7 @@ Nhánh riêng, không qua hồ dữ liệu và không qua kho. Phục vụ 3 ch�
 
 *Điều phối và lịch chạy toàn bộ luồng*
 
-Trong sơ đồ gốc, Airflow là khung chú thích bao trên toàn bộ, không nối vào hộp nào — nghĩa là điều phối tất cả.
+Trong sơ đồ gốc, Airflow là hộp chú thích đặt trên cùng, không nối vào hộp nào — nghĩa là điều phối tất cả các chặng.
 
 | Giờ | Việc | Phụ thuộc |
 |---|---|---|
@@ -264,14 +264,14 @@ Trong sơ đồ gốc, Airflow là khung chú thích bao trên toàn bộ, khôn
 | 04:30 | Chuẩn hoá `raw` → `cleansed` | 3 tác vụ trên |
 | 05:00 | Nạp `cleansed` → `lnd` → `crt`, ghi watermark | 04:30 |
 | 05:40 | Cổng kiểm tra chất lượng | 05:00 |
-| 06:00 | Dựng dim rồi Fact vào `datamart` | 05:40 pass |
+| 06:00 | Dựng dim rồi Fact vào kho phân tích `dm` | Cổng chất lượng 05:40 đạt |
 | 06:40 | Làm mới 6 bảng `svg_bi` | 06:00 |
 | 07:00 | Đối soát với POS và cổng thanh toán | 05:40 |
 | Chủ nhật 02:00 | Bảo trì Iceberg: gộp file nhỏ, xoá snapshot cũ 30 ngày | — |
 
-**Ba quyết định:** thứ tự bất biến **dim trước Fact** (Fact cần khoá đại diện do dim sinh) · mọi tác vụ nhận `business_date` làm tham số (điều kiện để nạp bù lịch sử) · retry 3 lần giãn cách luỹ tiến 2/4/8 phút cho lỗi hạ tầng tạm thời.
+**Ba quyết định:** thứ tự bất biến **dim trước Fact** (Fact cần khoá đại diện do dim sinh) · mọi tác vụ nhận `business_date` làm tham số (điều kiện để nạp bù lịch sử) · tự chạy lại 3 lần, giãn cách luỹ tiến 2/4/8 phút, chỉ áp cho lỗi hạ tầng tạm thời.
 
-**Cam kết:** dữ liệu ngày N sẵn sàng trước **08:00 ngày N+1**, đạt tối thiểu 99% số ngày trong quý.
+**Cam kết:** dữ liệu ngày N sẵn sàng trước **08:00 ngày N+1**, đạt tối thiểu 99% số ngày trong quý — đo bằng thời điểm kết thúc của `dag_refresh_svg_bi` ghi trong `ctl.pipeline_run`.
 
 → [Thiết kế DAG](docs/06-platform/ho-du-lieu-va-kho.md#4-điều-phối-bằng-airflow)
 
@@ -294,12 +294,13 @@ Luồng thứ tư không có trong sơ đồ gốc nhưng bắt buộc phải c�
 
 ## 9. QUY MÔ VÀ ĐIỂM NGHẼN
 
-| | 20 salon | 2.000 salon |
+| | 20 chi nhánh | 2.000 chi nhánh |
 |---|---|---|
-| Bảng lớn nhất trong kho (`fact_sales_line`) | 421.000 dòng/năm | 42,1 triệu dòng/năm |
-| Toàn bộ `datamart` sau 5 năm | ~150 MB | ~15 GB |
+| Fact chiếm dung lượng lớn nhất — `fact_sales_line`, 29 cột | 421.000 dòng/năm | 42,1 triệu dòng/năm |
+| Fact nhiều dòng nhất — `fact_loyalty_txn` | 504.000 dòng/năm | 50,4 triệu dòng/năm |
+| Toàn bộ kho phân tích `dm` sau 5 năm | ~150 MB | ~15 GB |
 | Sự kiện ứng dụng — ở hồ dữ liệu, không vào kho | 2,5 triệu/năm | 250 triệu/năm |
-| Khối lượng nạp mỗi đêm | ~12.000 dòng | ~1,2 triệu dòng |
+| Khối lượng nạp mỗi đêm — bình quân 10 Fact ÷ 350 ngày | ~8.600 dòng | ~860.000 dòng |
 
 **Dung lượng không phải điểm nghẽn ở cả hai quy mô.** Điểm nghẽn là **thời gian nạp** trong cửa sổ 05:00–06:40. Vì vậy các quyết định về chạy lại không sai số, phân vùng theo tháng và `TRUNCATE PARTITION` quan trọng hơn nhiều so với việc tiết kiệm dung lượng.
 
@@ -330,7 +331,7 @@ Ba lỗi sai âm thầm hay gặp: `COUNT(*)` sai độ hạt · `AVG` của m�
 |---|---|
 | 1–2 · Nguồn và thu nạp | [docs/06-platform/nguon-va-thu-nap.md](docs/06-platform/nguon-va-thu-nap.md) |
 | 3–4 · Hồ dữ liệu, nạp và kiểm soát | [docs/06-platform/ho-du-lieu-va-kho.md](docs/06-platform/ho-du-lieu-va-kho.md) |
-| 5 · DDL 79 bảng | [docs/03-ddl/](docs/03-ddl/) |
+| 5 · DDL 92 bảng | [docs/03-ddl/](docs/03-ddl/) |
 | 5 · Ánh xạ nguồn sang đích | [docs/02-mapping/source-to-target.md](docs/02-mapping/source-to-target.md) |
 | 5 · Quy trình nạp và khởi tạo | [docs/04-etl/](docs/04-etl/) |
 | 5.3 · 56 quy tắc chất lượng | [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md) |
@@ -338,5 +339,5 @@ Ba lỗi sai âm thầm hay gặp: `COUNT(*)` sai độ hạt · `AVG` của m�
 | 7 · Công nghệ, bảo mật, vận hành | [docs/08-operations/van-hanh.md](docs/08-operations/van-hanh.md) |
 | Mô hình dữ liệu logic | [docs/01-erd/](docs/01-erd/) |
 | Nghiệp vụ sinh ra dữ liệu | [docs/00-business/nghiep-vu.md](docs/00-business/nghiep-vu.md) |
-| Lộ trình 8 giai đoạn | [docs/09-roadmap/lo-trinh.md](docs/09-roadmap/lo-trinh.md) |
+| Lộ trình 9 giai đoạn (GĐ 0–8), 18 tuần | [docs/09-roadmap/lo-trinh.md](docs/09-roadmap/lo-trinh.md) |
 | Quy ước đặt tên, thuật ngữ, checklist | [docs/99-reference/tra-cuu.md](docs/99-reference/tra-cuu.md) |

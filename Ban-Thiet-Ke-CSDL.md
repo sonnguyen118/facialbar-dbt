@@ -35,8 +35,8 @@ Xây dựng một cơ sở dữ liệu phân tích tập trung cho toàn chuỗi
 
 | Nhóm | Kết quả cụ thể |
 |---|---|
-| **Ban điều hành** | Báo cáo doanh thu, lợi nhuận gộp, xếp hạng chi nhánh cập nhật trước 08:00 mỗi ngày, đã đối soát với POS |
-| **Vận hành** | Đo được tỷ lệ khách không đến, tỷ lệ lấp buồng, năng suất kỹ thuật viên theo từng chi nhánh |
+| **Ban điều hành** | Báo cáo doanh thu thuần, tiền thực thu, xếp hạng chi nhánh cập nhật trước 08:00 mỗi ngày, đã đối soát với POS. *Lợi nhuận gộp sẵn sàng sau khi Kế toán cung cấp cách tính giá vốn dịch vụ ([mục 11](#11-rủi-ro-và-biện-pháp-kiểm-soát))* |
+| **Vận hành** | Đo được tỷ lệ khách không đến, tỷ lệ huỷ lịch, thời gian phục vụ theo từng chi nhánh. *Tỷ lệ lấp buồng và năng suất kỹ thuật viên sẵn sàng sau khi Vận hành cung cấp lịch phân ca và giờ mở cửa ([mục 11](#11-rủi-ro-và-biện-pháp-kiểm-soát))* |
 | **Marketing** | Đo được chi phí thu hút một khách mới và doanh thu trên mỗi đồng quảng cáo theo từng kênh |
 | **Tài chính** | Đối soát tự động hằng ngày giữa hệ thống và POS/cổng thanh toán, cảnh báo ngay khi lệch |
 | **Chăm sóc khách hàng** | Nhận diện sớm nhóm khách có nguy cơ không quay lại để chăm sóc kịp thời |
@@ -45,16 +45,16 @@ Xây dựng một cơ sở dữ liệu phân tích tập trung cho toàn chuỗi
 
 | Hạng mục | Ước tính |
 |---|---|
-| **Thời gian triển khai** | 16 tuần (8 giai đoạn 2 tuần) |
-| **Nhân lực** | ~15–16 người-tháng |
-| **Hạ tầng** | Chi phí thấp — xem [mục 9](#9-quy-mô-hiệu-năng-và-chi-phí-hạ-tầng). Dung lượng dữ liệu ở quy mô 20 chi nhánh chỉ khoảng 150 MB, không phải yếu tố chi phí đáng kể |
+| **Thời gian triển khai** | 18 tuần — 9 giai đoạn (GĐ 0 đến GĐ 8), mỗi giai đoạn 2 tuần |
+| **Nhân lực** | 16,95 người-tháng (chi tiết [mục 5.3](#53-nhân-lực)) |
+| **Hạ tầng** | Bản quyền phát sinh bằng 0 (dùng SQL Server và Power BI hiện có). Dung lượng ở quy mô 20 chi nhánh khoảng 150 MB trong kho và 3 GB ở hồ dữ liệu. Dự toán chi tiết kèm các ô cần đơn giá nội bộ: [mục 9.5](#95-dự-toán-chi-phí) |
 | **Phần mềm** | Tận dụng SQL Server và Power BI đã có; các thành phần còn lại là mã nguồn mở |
 
 **Kết luận về chi phí: phần lớn chi phí nằm ở nhân lực, không nằm ở hạ tầng hay bản quyền.**
 
 ### 1.5. Đề nghị Ban Tổng Giám đốc
 
-1. **Phê duyệt** phương án thiết kế và kế hoạch triển khai 16 tuần.
+1. **Phê duyệt** phương án thiết kế và kế hoạch triển khai 18 tuần với nguồn lực 16,95 người-tháng.
 2. **Quyết định** 8 nội dung nghiệp vụ tại [mục 6](#6-các-quyết-định-cần-ban-lãnh-đạo-phê-duyệt) — đây là các định nghĩa mang tính chính sách công ty, bộ phận kỹ thuật không tự quyết được.
 3. **Chỉ định** người chịu trách nhiệm dữ liệu cho từng lĩnh vực nghiệp vụ theo [mục 7.3](#73-phân-công-trách-nhiệm-dữ-liệu).
 
@@ -70,7 +70,7 @@ Xây dựng một cơ sở dữ liệu phân tích tập trung cho toàn chuỗi
 | 2 | Số liệu sẵn sàng đúng giờ | Dữ liệu ngày N có trước 08:00 ngày N+1, đạt ≥ 99% số ngày trong quý |
 | 3 | Lưu trữ đầy đủ lịch sử | Truy vấn được trạng thái khách hàng, chi nhánh, dịch vụ tại bất kỳ thời điểm nào trong quá khứ |
 | 4 | Phát hiện sai lệch tự động | 100% sai lệch doanh thu vượt ngưỡng được cảnh báo trong ngày, không cần rà thủ công |
-| 5 | Nền tảng cho phân tích nâng cao | Dựng được mô hình dự báo khách rời bỏ với độ chính xác chấp nhận được |
+| 5 | Nền tảng cho phân tích nâng cao | Mô hình dự báo khách rời bỏ đạt AUC ≥ 0,75 trên tập kiểm định 3 tháng gần nhất, không dùng dữ liệu phát sinh sau mốc dự đoán |
 
 ### 2.2. Phạm vi thực hiện
 
@@ -95,7 +95,7 @@ Xây dựng một cơ sở dữ liệu phân tích tập trung cho toàn chuỗi
 | Facebook / Google Ads, GA4 | Nguồn dữ liệu qua giao diện lập trình | Marketing |
 | **Kho dữ liệu phân tích** | **Thiết kế và vận hành mới** | **Bộ phận Dữ liệu** |
 
-> **Rủi ro cần lưu ý:** hệ thống được thiết kế ở vị thế chỉ đọc từ POS. Nếu nhà cung cấp POS thay đổi cấu trúc dữ liệu mà không thông báo, đường ống có thể gián đoạn. Biện pháp kiểm soát tại [mục 11](#11-rủi-ro-và-biện-pháp-kiểm-soát).
+> **Rủi ro R1 (mục 11):** hệ thống được thiết kế ở vị thế chỉ đọc từ POS. Nếu nhà cung cấp POS thay đổi cấu trúc dữ liệu mà không thông báo, đường ống có thể gián đoạn. Biện pháp kiểm soát tại [mục 11](#11-rủi-ro-và-biện-pháp-kiểm-soát).
 
 ---
 
@@ -127,7 +127,7 @@ flowchart LR
 | Chặng | Làm gì | Rủi ro nếu không có |
 |---|---|---|
 | **1. Nguồn** | Xác định rõ hệ thống nào là nguồn chân lý cho từng loại dữ liệu | Khi hai hệ thống lệch nhau, không có căn cứ để phân xử |
-| **2. Thu nhận** | Lấy dữ liệu tự động theo lịch, không thao tác tay | Phụ thuộc cá nhân; nghỉ phép là báo cáo dừng |
+| **2. Thu nhận** | Lấy dữ liệu tự động theo lịch, không thao tác tay | Phụ thuộc cá nhân: khi người phụ trách nghỉ, báo cáo không được cập nhật |
 | **3. Lưu trữ gốc** | Giữ bản gốc bất biến, không sửa đè | Không chứng minh được nguồn đã gửi gì; không dựng lại được khi phát hiện lỗi |
 | **4. Kho phân tích** | Làm sạch, đối soát, chốt định nghĩa chỉ tiêu | Mỗi bộ phận tự tính theo cách riêng, ra số khác nhau |
 | **5. Sử dụng** | Báo cáo và phân tích | Đầu tư không tạo ra giá trị |
@@ -139,7 +139,7 @@ flowchart LR
 | **Dữ liệu gốc bất biến** | Mọi con số đều truy ngược được về file gốc mà hệ thống nguồn đã gửi — phục vụ kiểm toán |
 | **Chạy lại không sai số** | Sự cố xảy ra thì chạy lại, số liệu không bị cộng dồn hai lần |
 | **Cổng kiểm soát chất lượng có quyền chặn** | Dữ liệu không đạt chuẩn không được đưa vào báo cáo, thay vì đưa vào rồi phát hiện sau |
-| **Chỉ dừng nhánh bị lỗi** | Một loại dữ liệu lỗi không làm sập toàn bộ hệ thống báo cáo |
+| **Chỉ dừng nhánh bị lỗi** | Một loại dữ liệu lỗi chỉ dừng nhánh nạp tương ứng; các báo cáo còn lại vẫn cập nhật bình thường |
 | **Báo cáo chỉ đọc từ lớp đã kiểm định** | Không ai vô tình lấy dữ liệu chưa qua kiểm soát để làm báo cáo trình lãnh đạo |
 
 ---
@@ -157,15 +157,15 @@ Cơ sở dữ liệu được tổ chức thành **4 lớp**, mỗi lớp có va
 | 3 | Kho phân tích | Mô hình phân tích, **chốt định nghĩa chỉ tiêu** | Bộ phận Dữ liệu, Phân tích |
 | 4 | Lớp phục vụ báo cáo | Bảng tổng hợp sẵn cho báo cáo | Toàn bộ người dùng qua công cụ báo cáo |
 
-**Quy mô:** 79 bảng, phân bố như sau.
+**Quy mô:** 92 bảng và 2 view, phân bố như sau.
 
 | Lớp | Số bảng | Đặc tả chi tiết |
 |---|---|---|
 | Vùng đệm | 28 | [docs/03-ddl/01-lnd.md](docs/03-ddl/01-lnd.md) |
-| Vùng làm sạch | 25 + 1 view | [docs/03-ddl/02-crt.md](docs/03-ddl/02-crt.md) |
-| Kho phân tích | 13 danh mục + 10 giao dịch + 1 cầu nối | [dimension](docs/03-ddl/03-dm-dimension.md) · [fact](docs/03-ddl/04-dm-fact.md) |
+| Vùng làm sạch | 25 bảng + 1 truy vấn dựng sẵn | [docs/03-ddl/02-crt.md](docs/03-ddl/02-crt.md) |
+| Kho phân tích | 13 bảng danh mục + 8 bảng giao dịch + 1 bảng chốt tháng + 1 bảng chốt tiến trình + 1 bảng phân bổ khuyến mãi | [dimension](docs/03-ddl/03-dm-dimension.md) · [fact](docs/03-ddl/04-dm-fact.md) |
 | Lớp phục vụ báo cáo | 6 | [docs/03-ddl/05-svg-bi.md](docs/03-ddl/05-svg-bi.md) |
-| Điều khiển và cách ly | 9 + 1 view | [docs/03-ddl/06-ctl-qtn.md](docs/03-ddl/06-ctl-qtn.md) |
+| Điều khiển và cách ly | 9 bảng + 1 truy vấn dựng sẵn | [docs/03-ddl/06-ctl-qtn.md](docs/03-ddl/06-ctl-qtn.md) |
 
 ### 4.2. Các bảng giao dịch chính và câu hỏi kinh doanh chúng trả lời
 
@@ -198,20 +198,27 @@ Ví dụ thực tế: khách hàng ở hạng Bạc tháng 1, lên hạng Vàng 
 
 ### 4.4. Bộ chỉ tiêu được chốt định nghĩa
 
-Toàn bộ chỉ tiêu được định nghĩa **một lần duy nhất** trong kho dữ liệu, không để mỗi báo cáo tự tính lại.
+Toàn bộ **24 chỉ tiêu** được định nghĩa **một lần duy nhất** trong kho dữ liệu, không để mỗi báo cáo tự tính lại.
 
-| Nhóm | Chỉ tiêu |
-|---|---|
-| **Tài chính** | Doanh thu thuần, Tiền thực thu, Giá trị hoá đơn bình quân, Doanh thu bình quân trên khách, Lợi nhuận gộp, Tỷ lệ giảm giá |
-| **Vận hành** | Tỷ lệ khách không đến, Tỷ lệ huỷ lịch, Năng suất kỹ thuật viên, Tỷ lệ lấp buồng, Tỷ lệ bán thêm, Thời gian chờ bình quân |
-| **Khách hàng** | Tỷ lệ khách quay lại, Tỷ lệ khách rời bỏ, Giá trị vòng đời khách hàng, Mức độ hài lòng, Tỷ lệ nâng hạng thẻ |
-| **Marketing** | Chi phí thu hút khách mới, Doanh thu trên mỗi đồng quảng cáo, Tỷ lệ chuyển đổi theo chiến dịch |
+**5 trong 24 chỉ tiêu chưa tính được ngay** vì phụ thuộc dữ liệu chưa có nguồn ([mục 11](#11-rủi-ro-và-biện-pháp-kiểm-soát)). Cột cuối ghi rõ từng trường hợp — đây là phần Ban Tổng Giám đốc cần biết trước khi phê duyệt danh mục.
+
+| Nhóm | Chỉ tiêu | Điều kiện tính được |
+|---|---|---|
+| **Tài chính** (6) | Doanh thu thuần, Tiền thực thu, Giá trị hoá đơn bình quân, Doanh thu bình quân trên khách, Tỷ lệ giảm giá | Đủ dữ liệu |
+| | Lợi nhuận gộp | **Chờ cách tính giá vốn dịch vụ — Kế toán** |
+| **Vận hành** (7) | Tỷ lệ khách không đến, Tỷ lệ huỷ lịch, Tỷ lệ bán thêm, Thời gian chờ bình quân, Thời gian phục vụ bình quân | Đủ dữ liệu |
+| | Năng suất kỹ thuật viên | **Chờ lịch phân ca kỹ thuật viên — Vận hành** |
+| | Tỷ lệ lấp buồng | **Chờ lịch phân ca và giờ mở cửa từng chi nhánh — Vận hành** |
+| **Khách hàng** (7) | Tỷ lệ khách quay lại, Tỷ lệ khách rời bỏ, Mức độ hài lòng (CSAT, thang 1–5), Chỉ số khuyến nghị (NPS, thang 0–10), Tỷ lệ nâng hạng thẻ, Số khách hoạt động | Đủ dữ liệu |
+| | Giá trị vòng đời khách hàng | **Chờ cách tính giá vốn dịch vụ — Kế toán** |
+| **Marketing** (4) | Chi phí thu hút khách mới, Doanh thu trên mỗi đồng quảng cáo, Tỷ lệ nhấp quảng cáo | Đủ dữ liệu |
+| | Tỷ lệ chuyển đổi theo chiến dịch | **Chờ chốt độ hạt dữ liệu gửi chiến dịch — GĐ 7** |
 
 ---
 
 ## 5. LỘ TRÌNH TRIỂN KHAI
 
-### 5.1. Kế hoạch 8 giai đoạn
+### 5.1. Kế hoạch 9 giai đoạn — 18 tuần
 
 | GĐ | Tuần | Nội dung | Kết quả bàn giao | Điều kiện nghiệm thu |
 |---|---|---|---|---|
@@ -242,12 +249,14 @@ Toàn bộ chỉ tiêu được định nghĩa **một lần duy nhất** trong 
 
 | Vai trò | Mức tham gia | Người-tháng | Nhiệm vụ chính |
 |---|---|---|---|
-| Kiến trúc sư dữ liệu | 50% | 2,0 | Thiết kế, thẩm định, hướng dẫn kỹ thuật |
-| Kỹ sư dữ liệu | 2 người, toàn thời gian | 8,0 | Xây dựng đường ống, cơ sở dữ liệu |
-| Chuyên viên phân tích | Toàn thời gian từ GĐ 3 | 3,0 | Định nghĩa chỉ tiêu, báo cáo, đối soát |
-| Chuyên viên nghiệp vụ | 30% | 1,2 | Cung cấp và xác nhận quy tắc nghiệp vụ |
-| Quản trị hạ tầng | 30% | 1,2 | Hạ tầng, phân quyền, bảo mật |
-| | **Tổng** | **15,4** | |
+| Kiến trúc sư dữ liệu | 50% | 2,25 | Thiết kế, thẩm định, hướng dẫn kỹ thuật |
+| Kỹ sư dữ liệu | 2 người, toàn thời gian | 9,0 | Xây dựng đường ống, cơ sở dữ liệu |
+| Chuyên viên phân tích | Toàn thời gian từ GĐ 3 (tuần 7–18) | 3,0 | Định nghĩa chỉ tiêu, báo cáo, đối soát |
+| Chuyên viên nghiệp vụ | 30% | 1,35 | Cung cấp và xác nhận quy tắc nghiệp vụ |
+| Quản trị hạ tầng | 30% | 1,35 | Hạ tầng, phân quyền, bảo mật |
+| | **Tổng** | **16,95** | |
+
+Cơ sở tính: 18 tuần = 4,5 tháng. Riêng Chuyên viên phân tích tham gia từ tuần 7 đến tuần 18, tức 3 tháng.
 
 **Phụ thuộc từ các bộ phận khác** — nếu không được bố trí sẽ làm chậm tiến độ:
 
@@ -295,7 +304,13 @@ Hiện có bốn cách hiểu đang cùng tồn tại giữa các bộ phận:
 
 Khách xem quảng cáo Facebook ngày 1, tìm Google ngày 3, đặt lịch ngày 7. Doanh thu tính cho kênh nào?
 
-**Khuyến nghị:** quy gán cho **kênh tiếp xúc có trả phí gần nhất trước khi đặt lịch**. Đây là chuẩn phổ biến trong bán lẻ dịch vụ.
+| Phương án | Cách quy gán | Hệ quả cho phân bổ ngân sách marketing | Khuyến nghị |
+|---|---|---|---|
+| **A. Kênh có trả phí gần nhất trước khi đặt lịch** | Toàn bộ doanh thu về kênh tiếp xúc cuối | Ngân sách dồn về kênh chốt đơn (tìm kiếm Google). Rủi ro: cắt ngân sách kênh nhận diện thương hiệu ở đầu phễu vì nó không bao giờ được ghi công | ✔ |
+| B. Kênh tiếp xúc đầu tiên | Toàn bộ doanh thu về kênh khách gặp đầu tiên | Ngân sách dồn về kênh nhận diện. Rủi ro: đánh giá thấp kênh chốt đơn, giảm chi đúng chỗ đang tạo đơn | |
+| C. Chia đều cho mọi kênh có trả phí trong hành trình | Chia đều theo số điểm tiếp xúc | Phản ánh cân bằng hơn, nhưng không kênh nào có tín hiệu đủ rõ để quyết định tăng hay giảm chi | |
+
+**Khuyến nghị:** phương án A — chuẩn phổ biến trong bán lẻ dịch vụ, và là phương án duy nhất tính được từ dữ liệu tiếp xúc hiện thu được. Chênh lệch chi phí thu hút khách mới giữa phương án A và B sẽ được đo trên dữ liệu 3 tháng đầu và trình lại tại mốc M1; nếu chênh lệch vượt 20% thì cần xem lại lựa chọn.
 
 **Lý do phải chốt:** không có quy tắc thống nhất thì chi phí thu hút khách mới và hiệu quả quảng cáo sẽ được mỗi bên tính một kiểu, dẫn tới tranh luận kéo dài giữa Marketing và Tài chính.
 
@@ -402,18 +417,19 @@ Mỗi lĩnh vực nghiệp vụ cần **hai người phụ trách**: một bên 
 
 ## 8. CHẤT LƯỢNG VÀ ĐỘ TIN CẬY SỐ LIỆU
 
-### 8.1. Sáu tiêu chí kiểm tra tự động
+### 8.1. Bảy nhóm kiểm tra tự động
 
-Hệ thống có **56 quy tắc kiểm tra** được chạy tự động mỗi ngày, phân theo sáu tiêu chí. Danh mục đầy đủ: [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md).
+Hệ thống có **56 quy tắc kiểm tra** được chạy tự động mỗi ngày, phân theo bảy nhóm. Danh mục đầy đủ: [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md).
 
-| Tiêu chí | Nội dung kiểm tra | Ví dụ |
-|---|---|---|
-| Đầy đủ | Có thiếu dữ liệu không | Mọi chi nhánh đang mở phải có ≥ 1 hoá đơn/ngày |
-| Chính xác | Dữ liệu có hợp lý không | Số tiền không âm; thời lượng dịch vụ trong khoảng hợp lý |
-| Nhất quán | Các hệ thống có khớp nhau | Doanh thu hệ thống khớp POS trong sai số 0,1% |
-| Duy nhất | Có trùng lặp không | Một hoá đơn không xuất hiện hai lần |
-| Hợp lệ | Đúng định dạng và danh mục không | Số điện thoại đúng định dạng; mã dịch vụ tồn tại |
-| Kịp thời | Có đúng hạn không | Dữ liệu ngày N có trước 08:00 ngày N+1 |
+| Nhóm | Số quy tắc | Nội dung kiểm tra | Ví dụ |
+|---|---|---|---|
+| Đầy đủ | 6 | Có thiếu dữ liệu không | Mọi chi nhánh đang mở phải có ≥ 1 hoá đơn/ngày |
+| Chính xác | 13 | Giá trị có nằm trong miền cho phép | Doanh thu thuần = doanh thu gộp trừ giảm giá; thời lượng dịch vụ 5–480 phút |
+| Nhất quán | 6 | Các hệ thống có khớp nhau | Doanh thu hệ thống khớp POS trong sai số 0,1% |
+| Duy nhất | 9 | Có trùng lặp không | Một hoá đơn không xuất hiện hai lần |
+| Hợp lệ | 9 | Đúng định dạng và danh mục không | Số điện thoại đúng định dạng; mã dịch vụ tồn tại |
+| Kịp thời | 6 | Có đúng hạn không | Dữ liệu thô về hệ thống trước 06:00; báo cáo sẵn sàng trước 08:00 ngày N+1 |
+| Mô hình chiều | 7 | Lịch sử thay đổi có liền mạch, đúng một phiên bản hiện hành | Mỗi khách chỉ có một bản ghi đang hiệu lực; không hở, không chồng khoảng thời gian |
 
 ### 8.2. Cơ chế xử lý khi phát hiện lỗi
 
@@ -427,7 +443,7 @@ Hệ thống có **56 quy tắc kiểm tra** được chạy tự động mỗi 
 
 ### 8.3. Đối soát tự động hằng ngày
 
-Hệ thống tự động so sánh doanh thu theo từng chi nhánh, từng ngày giữa kho dữ liệu và POS, cũng như giữa POS và cổng thanh toán. Sai lệch vượt ngưỡng làm tròn được cảnh báo ngay trong ngày.
+Hệ thống tự động so sánh doanh thu theo từng chi nhánh, từng ngày giữa kho dữ liệu và POS, cũng như giữa POS và cổng thanh toán. Sai lệch vượt 0,1% doanh thu ngày × chi nhánh được cảnh báo ngay trong ngày.
 
 **Đây là điểm thay đổi lớn nhất so với hiện trạng:** phát hiện sai lệch chuyển từ **rà thủ công định kỳ** sang **cảnh báo tự động hằng ngày**.
 
@@ -466,9 +482,28 @@ Giả định: 20 chi nhánh, 45 lượt dịch vụ mỗi chi nhánh mỗi ngà
 
 > **Chi phí thực sự nằm ở nhân lực, không nằm ở hạ tầng.** Đây là thông tin quan trọng khi cân nhắc phương án: tiết kiệm nhân sự để mua công nghệ đắt tiền hơn sẽ không mang lại hiệu quả trong trường hợp này.
 
-### 9.4. Điểm nghẽn thực tế cần lưu ý
+### 9.4. Điểm nghẽn thực tế
 
-Điểm nghẽn không phải dung lượng mà là **thời gian xử lý hằng đêm**. Ở quy mô 2.000 chi nhánh, hệ thống phải xử lý khoảng 1,2 triệu dòng mỗi đêm trong khoảng thời gian từ 05:00 đến 06:40. Thiết kế đã tính đến điều này thông qua cơ chế xử lý theo phân vùng thời gian.
+Điểm nghẽn không phải dung lượng mà là **thời gian xử lý hằng đêm**. Ở quy mô 2.000 chi nhánh, hệ thống phải xử lý khoảng 860.000 dòng mỗi đêm trong cửa sổ 05:00–06:40. Thiết kế chia bảng giao dịch theo tháng, nên khi cần nạp lại một ngày chỉ phải ghi lại phân vùng của tháng đó thay vì toàn bảng — rút thời gian nạp bù từ hàng giờ xuống dưới 10 phút.
+
+### 9.5. Dự toán chi phí
+
+Bảng dưới đây tách rõ phần đã xác định được từ thiết kế và phần cần đơn giá nội bộ để ra số tiền. **Bộ phận kỹ thuật không tự điền đơn giá nhân sự và đơn giá hạ tầng** — hai ô đó cần Tài chính và Nhân sự cung cấp trước khi trình ký.
+
+| Hạng mục | Khối lượng đã xác định | Đơn giá | Thành tiền |
+|---|---|---|---|
+| Nhân lực triển khai, 18 tuần | 16,95 người-tháng (chi tiết mục 5.3) | *Cần Nhân sự cung cấp đơn giá theo từng vai trò* | *Chờ đơn giá* |
+| Bản quyền SQL Server, Power BI | 0 — dùng hạ tầng và giấy phép hiện có | 0 | **0** |
+| Thành phần mã nguồn mở (Airflow, Kafka, Iceberg, Spark) | 0 phí bản quyền | 0 | **0** |
+| Lưu trữ hồ dữ liệu S3 | 20 chi nhánh: ~3 GB sau 5 năm. 2.000 chi nhánh: ~300 GB | *Cần đơn giá S3 theo hợp đồng đám mây hiện tại* | *Chờ đơn giá* |
+| Máy chủ chạy Airflow và Kafka | 1 máy 4 vCPU / 16 GB cho quy mô 20 chi nhánh | *Cần đơn giá hạ tầng nội bộ* | *Chờ đơn giá* |
+| Vận hành thường xuyên sau bàn giao | 0,5 người-tháng/tháng (1 người trực 50%) | *Cần Nhân sự cung cấp* | *Chờ đơn giá* |
+
+**Ba kết luận không phụ thuộc đơn giá:**
+
+1. **Phần lớn chi phí là nhân lực.** Bản quyền bằng 0 và dung lượng ở quy mô 20 chi nhánh chỉ khoảng 150 MB trong kho, 3 GB ở hồ dữ liệu.
+2. **Chi phí hạ tầng tăng theo khối lượng, không theo số chi nhánh.** Gấp 100 lần số chi nhánh chỉ làm dung lượng kho lên ~15 GB — vẫn nằm trong khả năng của một máy chủ SQL Server đơn.
+3. **Chi phí vận hành sau bàn giao thấp hơn chi phí triển khai khoảng 30 lần mỗi tháng** (0,5 so với 16,95 người-tháng chia cho 4,5 tháng).
 
 ---
 
@@ -480,7 +515,7 @@ Dự án chỉ được coi là hoàn thành khi đạt **toàn bộ** các tiê
 |---|---|---|---|
 | 1 | Doanh thu khớp POS | Sai lệch ≤ 0,1%, liên tiếp 30 ngày | Báo cáo đối soát tự động |
 | 2 | Số liệu đúng hạn | Sẵn sàng trước 08:00, đạt ≥ 99% số ngày trong quý | Nhật ký vận hành |
-| 3 | Chất lượng dữ liệu | ≥ 99% quy tắc kiểm tra đạt | Báo cáo chất lượng hằng ngày |
+| 3 | Chất lượng dữ liệu | 100% quy tắc mức Chặn đạt trong 30 ngày liên tiếp; từ 95% quy tắc mức Cảnh báo đạt, tính bình quân 30 ngày | Báo cáo chất lượng hằng ngày |
 | 4 | Kiểm soát chặn được lỗi | 100% lỗi gieo trong kiểm thử bị chặn | Biên bản kiểm thử |
 | 5 | Chạy lại không sai số | Chạy lại 3 lần cho kết quả giống nhau | Biên bản kiểm thử |
 | 6 | Báo cáo được sử dụng thực tế | ≥ 80% quản lý chi nhánh mở báo cáo ít nhất 1 lần mỗi tuần | Nhật ký truy cập |
@@ -525,9 +560,9 @@ Thiết kế đã tính đến các bước phát triển tiếp theo mà không
 
 | Nhu cầu tương lai | Đã chuẩn bị sẵn |
 |---|---|
-| Mở rộng số lượng chi nhánh | Đã kiểm chứng đáp ứng ở quy mô gấp 100 lần |
+| Mở rộng số lượng chi nhánh | Dự toán khối lượng cho thấy đáp ứng ở quy mô gấp 100 lần (mục 9.1–9.2); kiểm thử hiệu năng thực tế nằm trong GĐ 6 |
 | Báo cáo thời gian thực cho vận hành tại cửa hàng | Đã có luồng riêng đọc trực tiếp từ hệ thống sự kiện |
-| Dự báo nhu cầu, dự báo khách rời bỏ | Đã có lớp dữ liệu đặc trưng phục vụ mô hình |
+| Dự báo nhu cầu, dự báo khách rời bỏ | Bảng chân dung khách hàng đã tính sẵn các biến đầu vào cho mô hình, kèm mốc thời gian bảo đảm không dùng dữ liệu phát sinh sau thời điểm dự đoán |
 | Cá nhân hoá gợi ý dịch vụ cho khách | Dữ liệu hành vi đã được lưu đầy đủ |
 | Chuyển sang nền tảng đám mây nếu cần | Logic xử lý viết theo chuẩn phổ thông, hạn chế phụ thuộc riêng |
 
@@ -537,7 +572,7 @@ Thiết kế đã tính đến các bước phát triển tiếp theo mà không
 
 Kính đề nghị Ban Tổng Giám đốc xem xét và cho ý kiến về ba nội dung sau:
 
-**Một — Phê duyệt phương án và lộ trình.** Thông qua thiết kế trình bày tại tài liệu này và kế hoạch triển khai 16 tuần với nguồn lực khoảng 15,4 người-tháng.
+**Một — Phê duyệt phương án và lộ trình.** Thông qua thiết kế trình bày tại tài liệu này và kế hoạch triển khai 18 tuần với nguồn lực 16,95 người-tháng.
 
 **Hai — Quyết định 8 nội dung chính sách tại mục 6.** Đây là các định nghĩa mang tính chuẩn công ty, ảnh hưởng trực tiếp đến mọi báo cáo về sau. Bộ phận kỹ thuật đã nêu phương án và khuyến nghị cho từng nội dung.
 
@@ -566,7 +601,7 @@ Kính đề nghị Ban Tổng Giám đốc xem xét và cho ý kiến về ba n�
 | [Flow.md](Flow.md) | Luồng dữ liệu tổng thể: kiến trúc, nghiệp vụ, nguồn dữ liệu, các tầng nền tảng, chỉ tiêu, lộ trình | Bộ phận Dữ liệu, Công nghệ Thông tin |
 | [docs/01-erd/](docs/01-erd/) | Mô hình dữ liệu logic: thực thể, quan hệ, độ hạt, mô hình chiều | Chuyên viên phân tích |
 | [docs/02-mapping/](docs/02-mapping/) | Ánh xạ từng cột từ hệ thống nguồn sang kho dữ liệu | Kỹ sư dữ liệu |
-| [docs/03-ddl/](docs/03-ddl/) | Cấu trúc 79 bảng, khoá, ràng buộc, index, phân vùng | Quản trị cơ sở dữ liệu |
+| [docs/03-ddl/](docs/03-ddl/) | Cấu trúc 92 bảng, khoá, ràng buộc, index, phân vùng | Quản trị cơ sở dữ liệu |
 | [docs/04-etl/](docs/04-etl/) | Quy trình nạp dữ liệu, dữ liệu khởi tạo | Kỹ sư dữ liệu |
 | [docs/05-quality/](docs/05-quality/) | 56 quy tắc kiểm soát chất lượng dữ liệu | Chuyên viên phân tích, Kỹ sư dữ liệu |
 | [Flow.jpg](Flow.jpg) | Sơ đồ kiến trúc kỹ thuật | Bộ phận Dữ liệu |

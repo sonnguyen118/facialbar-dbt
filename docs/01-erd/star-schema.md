@@ -86,11 +86,11 @@ Dữ liệu thực tế:
 
 Fact tháng 1 trỏ vào `customer_sk = 8471` → mãi mãi là Silver. Fact tháng 7 trỏ vào `9022` → Gold. Lịch sử được bảo toàn tuyệt đối.
 
-> 💡 **Vai trò của `row_hash`:** mỗi lần nạp, băm các cột cần theo dõi rồi so với hash cũ. Khác nhau → tạo phiên bản mới. Giống nhau → bỏ qua. Nếu không có hash, phải so từng cột bằng tay — dài dòng và dễ sót.
+> **Vai trò của `row_hash`:** mỗi lần nạp, băm các cột cần theo dõi rồi so với hash cũ. Khác nhau → tạo phiên bản mới. Giống nhau → bỏ qua. Nếu không có hash, phải so từng cột bằng tay — dài dòng và dễ sót.
 
 ### Dimension đặc biệt
 
-| Loại | Là gì | Ví dụ Facial Bar |
+| Loại | Định nghĩa | Ví dụ Facial Bar |
 |---|---|---|
 | **Role-playing dimension** | Một dim dùng nhiều vai | `dim_date` đóng vai `booked_date`, `appointment_date`, `paid_date` — tạo view riêng cho từng vai |
 | **Degenerate dimension** | Mã giao dịch nằm ngay trong fact, không có dim riêng | `invoice_no`, `booking_id` |

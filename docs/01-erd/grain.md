@@ -16,7 +16,7 @@ grain quyết định mọi phép đếm và mọi phép tổng. Sai grain → `
 |---|---|---|---|
 | `dim_customer` | 1 **phiên bản** của 1 khách hàng | customer_id + valid_from | — (dimension) |
 | `dim_salon` | 1 phiên bản của 1 salon | salon_id + valid_from | — |
-| `dim_service` | 1 dịch vụ | service_id | — |
+| `dim_service` | 1 **phiên bản** của 1 dịch vụ | service_id + valid_from | — |
 | `fact_booking_line` | 1 **dịch vụ được đặt** trong 1 booking | booking_item_id | số dịch vụ đặt, giá trị đặt |
 | `fact_appointment` | 1 **lịch hẹn** | appointment_id | số lịch hẹn, no-show, thời gian chờ |
 | `fact_treatment` | 1 **dịch vụ đã thực hiện** | treatment_id | số lượt làm, phút phục vụ |
@@ -60,13 +60,13 @@ Nếu join `fact_sales_line` (3 dòng hoá đơn) với `fact_payment` (khách t
 
 ### Ba loại Fact — chọn đúng loại theo câu hỏi nghiệp vụ
 
-| Loại Fact | Là gì | Ví dụ Facial Bar | Khi nào dùng |
+| Loại Fact | Định nghĩa | Ví dụ Facial Bar | Khi nào dùng |
 |---|---|---|---|
 | **Transaction Fact** | 1 dòng = 1 sự kiện xảy ra | `fact_sales_line`, `fact_payment` | Đo lượng, đo tiền theo thời gian |
 | **Periodic Snapshot** | 1 dòng = trạng thái của 1 đối tượng vào cuối mỗi kỳ | `fact_customer_monthly_snapshot` (số dư điểm, hạng thẻ cuối tháng) | Đo trạng thái tích luỹ, đo "bao nhiêu khách đang active" |
 | **Accumulating Snapshot** | 1 dòng = 1 quy trình, **cập nhật dần** qua các mốc | `fact_booking_lifecycle` (booked_at → confirmed_at → checkin_at → treatment_at → paid_at) | Đo **thời gian giữa các bước** và tỷ lệ rơi ở từng bước |
 
-> 💡 `fact_booking_lifecycle` là bảng đắt giá nhất cho vận hành: nó cho ra ngay funnel *đặt lịch → xác nhận → đến → làm → trả tiền*, kèm số ngày/giờ ở mỗi chặng. Đây là bảng duy nhất được phép **UPDATE** trong datamart.
+> `fact_booking_lifecycle` là bảng có giá trị vận hành cao nhất: nó cho ra ngay phễu *đặt lịch → xác nhận → đến → làm → trả tiền*, kèm số ngày và số giờ ở mỗi chặng. Đây là bảng **Fact** duy nhất được `UPDATE` trong kho phân tích; các dim SCD2 cũng bị `UPDATE` khi đóng phiên bản cũ và khi ghi đè thuộc tính Type 1.
 
 ---
 

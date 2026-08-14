@@ -55,7 +55,7 @@ s3://facialbar-lake/
     └── pos/booking/loaded_dt=2026-08-14/...
 ```
 
-> 💡 **Vì sao thư mục có dạng `dt=2026-08-14` (kiểu Hive):** query engine đọc được ngay cột phân vùng từ tên thư mục. Câu `WHERE dt = '2026-08-14'` sẽ **chỉ đọc 1 thư mục** thay vì quét toàn bộ bucket. Đây gọi là **partition pruning** — chênh lệch chi phí có thể lên tới hàng trăm lần.
+> **Căn cứ — thư mục có dạng `dt=2026-08-14` (kiểu Hive):** query engine đọc được ngay cột phân vùng từ tên thư mục. Câu `WHERE dt = '2026-08-14'` sẽ **chỉ đọc 1 thư mục** thay vì quét toàn bộ bucket. Đây gọi là **partition pruning** — chênh lệch chi phí có thể lên tới hàng trăm lần.
 
 ### Bước Chuẩn hoá (raw → cleansed) — Spark hoặc Glue
 
@@ -89,7 +89,7 @@ flowchart LR
 >
 > | | Database Backup | Archive Zone |
 > |---|---|---|
-> | Là gì | Bản sao **trạng thái** của DB | Bản sao **dữ liệu đầu vào** của pipeline |
+> | Định nghĩa | Bản sao **trạng thái** của DB | Bản sao **dữ liệu đầu vào** của pipeline |
 > | Phục hồi được gì | Đưa DB về thời điểm T | **Chạy lại** pipeline từ đầu |
 > | Ai dùng | DBA | Data Engineer |
 > | Khi nào dùng | Server chết, xoá bảng nhầm | Logic transform sai, cần nạp lại 3 tháng |
@@ -106,7 +106,7 @@ Iceberg là một lớp **metadata** đặt lên trên các file Parquet trên S
 
 **Iceberg quản lý 4 thứ:**
 
-| Thành phần | Là gì | Lợi ích cụ thể |
+| Thành phần | Định nghĩa | Lợi ích cụ thể |
 |---|---|---|
 | **Schema** | Lưu định nghĩa cột trong metadata | Biết chính xác bảng có cột gì, kiểu gì |
 | **Metadata / Manifest** | Danh sách file thuộc bảng + thống kê min/max mỗi cột | Query → đọc metadata → **xác định đúng file cần đọc** → không phải quét S3 |
@@ -115,14 +115,14 @@ Iceberg là một lớp **metadata** đặt lên trên các file Parquet trên S
 
 **Bốn năng lực có được từ đó:**
 
-| Năng lực | Là gì | Ví dụ Facial Bar |
+| Năng lực | Định nghĩa | Ví dụ Facial Bar |
 |---|---|---|
 | **Schema Evolution** | Thêm/xoá/đổi tên cột an toàn | Thêm cột `skin_type` vào `treatment` — job cũ vẫn chạy bình thường |
 | **ACID Transaction** | Ghi thì hoặc xong hẳn, hoặc như chưa từng xảy ra | Spark job dừng bất thường → không để lại dữ liệu ghi dở |
 | **Time Travel** | Đọc bảng ở trạng thái quá khứ (nhờ snapshot) | `SELECT * FROM cleansed.booking FOR TIMESTAMP AS OF '2026-08-01'` để xem báo cáo hôm đó dựa trên dữ liệu nào |
 | **Hidden Partitioning** | Người viết SQL không cần biết cột phân vùng | `WHERE occurred_at > ...` tự động được tối ưu |
 
-> 💡 **Iceberg không lưu dữ liệu.** Dữ liệu thực tế vẫn là các file Parquet trên S3. Iceberg chỉ quản lý **metadata + trạng thái** của bảng. Xoá metadata thì file vẫn còn, nhưng không còn là "bảng" nữa.
+> **Iceberg không lưu dữ liệu.** Dữ liệu thực tế vẫn là các file Parquet trên S3. Iceberg chỉ quản lý **metadata + trạng thái** của bảng. Xoá metadata thì file vẫn còn, nhưng không còn là "bảng" nữa.
 
 **Dùng Iceberg ở đâu:** tầng **cleansed** trở đi (nơi cần schema ổn định, cần UPDATE/DELETE cho CDC, cần time travel). Tầng **raw** giữ nguyên file thô để bảo toàn nguyên tắc immutable.
 
@@ -154,7 +154,7 @@ không có watermark thì mỗi lần chạy phải quét lại toàn bộ dữ 
 
 Chạy pipeline 1 lần hay 5 lần với cùng dữ liệu đầu vào đều cho **cùng một kết quả**.
 
-pipeline sẽ hỏng, và người ta sẽ bấm retry. Nếu không idempotent, mỗi lần retry cộng thêm một bản dữ liệu → doanh thu tăng vọt không rõ lý do.
+đường ống sẽ có lúc hỏng và phải chạy lại. Nếu không lũy đẳng, mỗi lần chạy lại cộng thêm một bản dữ liệu, làm doanh thu tăng mà không có dấu vết giải thích.
 
 | Cách làm | Kỹ thuật | Áp dụng cho |
 |---|---|---|
@@ -296,7 +296,7 @@ CREATE TABLE lnd.pos_invoice_line (
 | **Đặc điểm** | Đã có khoá, có index, có ràng buộc, kiểu dữ liệu chuẩn |
 | **Grain** | Vẫn giữ **đúng grain của nguồn** — chưa biến đổi theo logic nghiệp vụ |
 
-> 💡 **Vai trò thực sự của `crt`:** đây là **tầng trọng tài**. Khi kế toán nói *"doanh thu POS là 1,25 tỷ mà dashboard hiện 1,21 tỷ"*, ta so `crt` với POS: nếu `crt` khớp POS → lỗi ở logic datamart; nếu `crt` lệch POS → lỗi ở ingestion. Không có tầng này thì không khoanh vùng được lỗi nằm ở khâu nào.
+> **Vai trò thực sự của `crt`:** đây là **tầng trọng tài**. Khi kế toán nói *"doanh thu POS là 1,25 tỷ mà dashboard hiện 1,21 tỷ"*, đối chiếu `crt` với POS: `crt` lệch POS trong 0,1% thì lỗi nằm ở logic kho phân tích; lệch quá 0,1% thì lỗi nằm ở bước thu nạp. Không có tầng này thì không khoanh vùng được lỗi nằm ở khâu nào.
 
 **Gộp định danh (Identity Resolution)** — việc khó nhất ở tầng `crt`:
 
@@ -401,7 +401,7 @@ CREATE TABLE qtn.reject_row (
 );
 ```
 
-> 💡 **Quarantine phải có người sở hữu và SLA xử lý.** Vùng cách ly không có người rà sẽ tích luỹ dòng lỗi mà không ai định lượng được phần doanh thu bị bỏ sót. Đề xuất: báo cáo quarantine hằng ngày cho data owner, SLA xử lý 3 ngày làm việc.
+> **Quarantine phải có người sở hữu và SLA xử lý.** Vùng cách ly không có người rà sẽ tích luỹ dòng lỗi mà không ai định lượng được phần doanh thu bị bỏ sót. Đề xuất: báo cáo quarantine hằng ngày cho data owner, SLA xử lý 3 ngày làm việc.
 
 ### Bảng thời gian thực (Real-time table)
 

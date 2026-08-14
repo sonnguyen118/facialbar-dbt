@@ -763,25 +763,30 @@ SELECT
     c.customer_id,
     c.full_name,
     -- Che số điện thoại: chỉ dm mới dùng bản che, bản đầy đủ giữ ở crt
+    -- Che 4 số giữa: 0901234567 -> 090****567 (khớp ví dụ ở 03-dm-dimension.md)
     CASE WHEN c.phone IS NULL THEN 'N/A'
-         ELSE LEFT(c.phone, 6) + '****' + RIGHT(c.phone, 3) END      AS phone_masked,
+         ELSE LEFT(c.phone, 3) + '****' + RIGHT(c.phone, 3) END      AS phone_masked,
     c.gender,
+    -- DATEDIFF(YEAR,...) đếm mốc năm, không phải tuổi thật: sinh 31/12/2001 thì
+    -- ngày 01/01/2026 ra 25 thay vì 24, và cả tập khách nhảy nhóm tuổi vào 01/01.
     CASE WHEN c.date_of_birth IS NULL THEN 'UNKNOWN'
-         WHEN DATEDIFF(YEAR, c.date_of_birth, SYSUTCDATETIME()) < 25 THEN '<25'
-         WHEN DATEDIFF(YEAR, c.date_of_birth, SYSUTCDATETIME()) < 35 THEN '25-34'
-         WHEN DATEDIFF(YEAR, c.date_of_birth, SYSUTCDATETIME()) < 45 THEN '35-44'
+         WHEN DATEDIFF(DAY, c.date_of_birth, SYSUTCDATETIME()) / 365.25 < 25 THEN '<25'
+         WHEN DATEDIFF(DAY, c.date_of_birth, SYSUTCDATETIME()) / 365.25 < 35 THEN '25-34'
+         WHEN DATEDIFF(DAY, c.date_of_birth, SYSUTCDATETIME()) / 365.25 < 45 THEN '35-44'
          ELSE '45+' END                                              AS age_group,
     ISNULL(s.city, N'(Không xác định)')                              AS city,
     -- Hạng thẻ tại thời điểm chạy, suy từ kỳ thành viên đang hiệu lực
     ISNULL(m.tier_code, 'None')                                      AS membership_tier,
     c.acquisition_channel,
-    ISNULL(r.rfm_segment, 'UNKNOWN')                                 AS rfm_segment,
-    ISNULL(ds.salon_sk, -1)                                          AS first_salon_sk,
+    -- View này CHỈ đọc schema `crt`. Trước đây nó join `dm.dim_salon` và
+    -- `svg_bi.agg_customer_360`; vì `CREATE VIEW` không có deferred name resolution,
+    -- tạo view ở bước 03 khi hai schema kia chưa tồn tại sẽ lỗi Msg 208. Đồng thời
+    -- crt phụ thuộc svg_bi tạo vòng: dim_customer <- view <- agg_customer_360 <- fact <- dim_customer.
+    -- Khoá đại diện `first_salon_sk` và `rfm_segment` được giải ở thủ tục nạp dim.
+    c.first_salon_id,
     c._is_deleted
 FROM       crt.customer c
 LEFT JOIN  crt.salon    s  ON s.salon_id = c.first_salon_id
-LEFT JOIN  dm.dim_salon ds ON ds.salon_id = c.first_salon_id AND ds.is_current = 1
-LEFT JOIN  svg_bi.agg_customer_360 r ON r.customer_id = c.customer_id
 OUTER APPLY (
     SELECT TOP (1) ms.tier_code
     FROM   crt.membership_subscription ms

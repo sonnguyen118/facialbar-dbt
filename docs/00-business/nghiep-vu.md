@@ -73,7 +73,7 @@ Tiêu chí phân loại: mô tả chứa động từ thể hoàn thành ("đã 
 
 | | Booking | Appointment | Treatment |
 |---|---|---|---|
-| Là gì | **Ý định** của khách | **Lịch hẹn** đã xếp | **Việc đã làm** thật |
+| Định nghĩa | **Ý định** của khách | **Lịch hẹn** đã xếp | **Việc đã làm** thật |
 | Thời điểm | Khi khách bấm "Đặt lịch" | Khi hệ thống xếp KTV + buồng + giờ | Khi KTV thực hiện xong |
 | Có thể huỷ? | Có | Có (kèm no-show) | Không (đã làm rồi) |
 | Sinh doanh thu? | **Không** | **Không** | **Có** (qua Payment) |
@@ -83,7 +83,7 @@ Ba bảng tách rời vì quan hệ giữa chúng không phải một-một:
 - 1 appointment có thể sinh **nhiều** treatment (đến làm facial, lễ tân up-sell thêm massage cổ vai gáy).
 - 1 appointment có thể sinh **0** treatment (khách no-show).
 
-Nếu gộp làm một bảng → không thể tính được **tỷ lệ no-show** và **tỷ lệ up-sell**, là 2 KPI vận hành quan trọng nhất của chuỗi spa.
+Nếu gộp làm một bảng → không thể tính được **tỷ lệ khách không đến** và **tỷ lệ bán thêm tại chỗ**, là hai chỉ tiêu vận hành quan trọng nhất của chuỗi.
 
 ---
 
@@ -96,12 +96,12 @@ Process cho biết **thứ tự phụ thuộc** giữa các bảng → quyết �
 |---|---|---|---|---|
 | 1 | **Customer Acquisition** | Thu hút khách mới | Marketing, Customer, Promotion | CAC, ROAS, số khách mới |
 | 2 | **Booking & Appointment** | Khách đặt được lịch | Customer, Service, Salon, Employee, Booking, Appointment | Tỷ lệ chốt lịch, no-show |
-| 3 | **Treatment** | Thực hiện dịch vụ | Appointment, Employee, Treatment, Service, Product | Utilization KTV, thời gian phục vụ |
+| 3 | **Treatment** | Thực hiện dịch vụ | Appointment, Employee, Treatment, Service, Product | Năng suất kỹ thuật viên, tỷ lệ bán thêm, thời gian phục vụ |
 | 4 | **Payment & Sales** | Thu tiền | Treatment, Product, Promotion, Payment, Membership | Revenue, ATV, tỷ lệ giảm giá |
 | 5 | **Loyalty & Membership** | Giữ chân khách | Customer, Payment, Loyalty, Membership | Tỷ lệ nâng hạng, điểm tiêu/tích |
 | 6 | **Customer Retention** | Khiến khách quay lại | Toàn bộ (closed-loop) | Repeat rate, CLV, churn |
 
-> 💡 Process 6 không có bảng riêng — nó là **kết quả** của 5 process trước. Đây là dấu hiệu tốt: process phân tích thường không sinh bảng nguồn mới, mà sinh **bảng tổng hợp** ở tầng datamart.
+> Process 6 không có bảng riêng — nó là **kết quả** của 5 process trước. Đây là dấu hiệu tốt: process phân tích thường không sinh bảng nguồn mới, mà sinh **bảng tổng hợp** ở tầng datamart.
 
 ---
 
@@ -186,7 +186,7 @@ flowchart TD
     classDef bad fill:#7f1d1d,stroke:#f87171,color:#fef2f2
 ```
 
-> 💡 **Điểm quan trọng mà bản phác thảo ban đầu chưa có: các nhánh THẤT BẠI.**
+> **Điểm quan trọng mà bản phác thảo ban đầu chưa có: các nhánh THẤT BẠI.**
 > Luồng "happy path" chỉ là 1 trong nhiều kết cục. Phân tích kinh doanh giá trị nhất nằm ở nhánh thất bại: *tại sao 30% booking bị huỷ?*
 > Vì vậy mô hình dữ liệu **phải lưu cả event thất bại**, không chỉ event thành công. Nếu POS chỉ ghi booking thành công → mất vĩnh viễn khả năng phân tích huỷ lịch.
 

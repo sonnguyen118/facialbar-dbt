@@ -2,11 +2,14 @@
 
 **Phiên bản 1.0 · 14/08/2026**
 
-Trình tự công việc của người phân tích dữ liệu khi thiết kế cơ sở dữ liệu: đi từ nghiệp vụ đến chỉ tiêu, qua 8 bước, mỗi bước có sản phẩm đầu ra cụ thể và điều kiện hoàn thành.
+Trình tự công việc của người phân tích dữ liệu khi thiết kế cơ sở dữ liệu: đi từ nghiệp vụ đến báo cáo, qua 10 bước, mỗi bước có sản phẩm đầu ra cụ thể và điều kiện hoàn thành.
 
 Luồng hệ thống (nguồn → báo cáo): [Flow.md](Flow.md) · Tổng thiết kế: [README.md](README.md)
 
 **Nguyên tắc:** không bước nào được bỏ, và không đảo thứ tự. Đảo thứ tự — dựng bảng trước khi chốt độ hạt — dẫn tới viết lại toàn bộ Fact và mọi báo cáo phụ thuộc.
+
+
+> **Quy ước thuật ngữ.** Thuật ngữ nghiệp vụ dùng trong toàn bộ văn bản là **chi nhánh**; tên bảng và tên cột giữ nguyên `salon` (`dim_salon`, `salon_sk`) theo quy ước đặt tên đối tượng bằng tiếng Anh. Tương tự: **hồ dữ liệu** trong văn bản, `raw`/`cleansed`/`archive` khi chỉ phân vùng; **kho phân tích** trong văn bản, `dm` khi chỉ schema.
 
 ---
 
@@ -17,7 +20,7 @@ flowchart TD
     B1["<b>1. Hành trình khách hàng</b><br/>Vẽ vòng đời khách"]:::biz
     B2["<b>2. Miền nghiệp vụ</b><br/>14 miền, có chủ sở hữu"]:::biz
     B3["<b>3. Quy trình nghiệp vụ</b><br/>6 quy trình"]:::biz
-    B4["<b>4. Sự kiện nghiệp vụ</b><br/>25 sự kiện, có thuộc tính"]:::biz
+    B4["<b>4. Sự kiện nghiệp vụ</b><br/>24 sự kiện, có thuộc tính"]:::biz
 
     D1["<b>5. Thực thể và quan hệ</b><br/>22 thực thể, cardinality"]:::model
     D2["<b>6. Độ hạt</b><br/>Khai báo cho mọi bảng"]:::model
@@ -35,14 +38,14 @@ flowchart TD
     classDef ana   fill:#4c1d95,stroke:#a78bfa,color:#f5f3ff
 ```
 
-Mũi tên nét đứt là vòng lặp thật: chỉ tiêu mới thường đòi dữ liệu chưa thu — lúc đó phải quay lại bước 2, không được tự bịa cột.
+Mũi tên nét đứt là vòng lặp thật: chỉ tiêu mới có thể đòi dữ liệu chưa thu — lúc đó phải quay lại bước 2 bổ sung nguồn, không thêm cột không có nguồn dữ liệu tương ứng.
 
 | Bước | Sản phẩm đầu ra | Xong khi |
 |---|---|---|
-| 1 | Sơ đồ hành trình khách hàng | Vận hành xác nhận đúng thực tế tại salon |
+| 1 | Sơ đồ hành trình khách hàng | Vận hành xác nhận đúng thực tế tại chi nhánh |
 | 2 | Danh mục 14 miền, mỗi miền có chủ sở hữu nghiệp vụ | Ban lãnh đạo chỉ định đủ người phụ trách |
 | 3 | 6 quy trình, mỗi quy trình có mục tiêu và chỉ tiêu chính | Nghiệp vụ xác nhận |
-| 4 | Danh mục 25 sự kiện, mỗi sự kiện có thuộc tính then chốt | Đội ứng dụng và POS xác nhận có thu được |
+| 4 | Danh mục 24 sự kiện, mỗi sự kiện có thuộc tính then chốt | Đội ứng dụng và POS xác nhận có thu được |
 | 5 | ERD 22 thực thể, đủ cardinality | Không còn quan hệ nhiều-nhiều chưa phá |
 | 6 | Bảng khai báo độ hạt cho mọi bảng | Mỗi bảng viết được độ hạt bằng một câu, không có chữ "và" |
 | 7 | Bus Matrix | Xác định xong conformed dimension |
@@ -74,12 +77,12 @@ Vòng lặp cuối là lý do hệ thống phải lưu lịch sử: hạng thẻ
 
 | Bản chất | Miền | Về sau thành |
 |---|---|---|
-| Danh mục (8) | Khách hàng, Salon, Nhân viên, Dịch vụ, Sản phẩm, Khuyến mãi, Thành viên, Buồng | dim |
-| Giao dịch (6) | Đặt lịch, Lịch hẹn, Điều trị, Thanh toán, Điểm thưởng, Đánh giá, Marketing | Fact |
+| Danh mục (6) | Khách hàng, Chi nhánh, Nhân viên, Dịch vụ, Sản phẩm, Khuyến mãi | dim |
+| Giao dịch (8) | Đặt lịch, Lịch hẹn, Điều trị, Thanh toán, Thành viên, Điểm thưởng, Marketing, Đánh giá | Fact |
 
-Phân biệt danh mục và giao dịch bằng một tiêu chí: mô tả có động từ thể hoàn thành ("đã đặt", "đã trả") thì là giao dịch; là trạng thái tĩnh ("khách VIP", "salon Q1") thì là danh mục.
+Phân biệt danh mục và giao dịch bằng một tiêu chí: mô tả có động từ thể hoàn thành ("đã đặt", "đã trả") thì là giao dịch; là trạng thái tĩnh ("khách VIP", "chi nhánh Q1") thì là danh mục.
 
-**Ba miền dễ gộp sai:** Đặt lịch, Lịch hẹn, Điều trị là ba thực thể khác nhau. Gộp lại thì không tính được tỷ lệ khách không đến và tỷ lệ bán thêm tại chỗ — hai chỉ số vận hành quan trọng nhất của chuỗi.
+**Ba miền phải giữ tách rời:** Đặt lịch, Lịch hẹn, Điều trị là ba thực thể khác nhau. Gộp lại thì không tính được tỷ lệ khách không đến và tỷ lệ bán thêm tại chỗ — hai chỉ số vận hành quan trọng nhất của chuỗi.
 
 → [docs/00-business/nghiep-vu.md](docs/00-business/nghiep-vu.md#2-miền-nghiệp-vụ)
 
@@ -92,7 +95,7 @@ Sáu quy trình. Quy trình cho biết **thứ tự phụ thuộc** giữa các 
 | # | Quy trình | Miền tham gia | Chỉ tiêu chính |
 |---|---|---|---|
 | 1 | Thu hút khách mới | Marketing, Khách hàng, Khuyến mãi | Chi phí thu hút khách mới, doanh thu trên đồng quảng cáo |
-| 2 | Đặt lịch và lịch hẹn | Khách hàng, Dịch vụ, Salon, Nhân viên, Đặt lịch, Lịch hẹn | Tỷ lệ chốt lịch, tỷ lệ không đến |
+| 2 | Đặt lịch và lịch hẹn | Khách hàng, Dịch vụ, Chi nhánh, Nhân viên, Đặt lịch, Lịch hẹn | Tỷ lệ chốt lịch, tỷ lệ không đến |
 | 3 | Thực hiện dịch vụ | Lịch hẹn, Nhân viên, Điều trị, Dịch vụ, Sản phẩm | Năng suất kỹ thuật viên, tỷ lệ bán thêm |
 | 4 | Thu tiền | Điều trị, Sản phẩm, Khuyến mãi, Thanh toán, Thành viên | Doanh thu, giá trị hoá đơn bình quân, tỷ lệ giảm giá |
 | 5 | Giữ chân khách | Khách hàng, Thanh toán, Điểm thưởng, Thành viên | Tỷ lệ nâng hạng, điểm tích trên tiêu |
@@ -106,7 +109,7 @@ Quy trình 6 không sinh bảng nguồn mới — nó là kết quả của 5 qu
 
 ## 4. SỰ KIỆN NGHIỆP VỤ
 
-25 sự kiện, đặt tên theo `<miền>_<động từ thể hoàn thành>`.
+24 sự kiện, đặt tên theo `<đối tượng>_<động từ thể hoàn thành>`.
 
 Sự kiện là hạt dữ liệu nhỏ nhất. Có sự kiện thì tái dựng được lịch sử; chỉ có bảng trạng thái hiện tại thì mất vĩnh viễn thông tin *"khách này đã huỷ 3 lần trước khi đến"*.
 
@@ -132,7 +135,7 @@ Sự kiện là hạt dữ liệu nhỏ nhất. Có sự kiện thì tái dựng
 
 Khách đổi số điện thoại thì khoá tự nhiên đổi và mọi giao dịch cũ mất liên kết. Khoá đại diện không bao giờ đổi, nên lịch sử được bảo toàn.
 
-**Quan hệ nhiều-nhiều không tồn tại được trong database** — phải phá thành hai quan hệ một-nhiều qua bảng trung gian. Trong thiết kế này có 3 chỗ: khuyến mãi × dịch vụ, thanh toán × hoá đơn, dòng hoá đơn × khuyến mãi.
+**Quan hệ nhiều-nhiều không hiện thực hoá trực tiếp được trong một bảng quan hệ** — phải phá thành hai quan hệ một-nhiều qua bảng trung gian. Trong thiết kế này có 3 chỗ: khuyến mãi × dịch vụ, thanh toán × hoá đơn, dòng hoá đơn × khuyến mãi.
 
 → [docs/01-erd/erd-logic.md](docs/01-erd/erd-logic.md)
 
@@ -149,10 +152,12 @@ Khai báo cho **mọi** bảng: một dòng đại diện cho cái gì, viết b
 | Câu hỏi | Cách viết sai | Ra | Cách viết đúng | Ra |
 |---|---|---|---|---|
 | Có bao nhiêu lần đặt lịch? | `COUNT(*)` | **2** | `COUNT(DISTINCT booking_id)` | **1** |
-| Bao nhiêu khách đã đặt? | `COUNT(customer_id)` | **2** | `COUNT(DISTINCT customer_id)` | **1** |
+| Bao nhiêu khách đã đặt? | `COUNT(customer_sk)` | **2** | `COUNT(DISTINCT d.customer_id)` qua `JOIN dim_customer d` | **1** |
 | Tổng giá trị đặt? | `SUM(line_amount)` | 1.500.000 | `SUM(line_amount)` | 1.500.000 |
 
 Cùng một bảng: `SUM` đúng, `COUNT` sai. Đó chính là hệ quả của độ hạt.
+
+**Đếm khách phải đi qua `dim_customer.customer_id`, không dùng `COUNT(DISTINCT customer_sk)`.** Bảng Fact chỉ có khoá đại diện `customer_sk`, mà SCD Type 2 sinh một `sk` mới mỗi lần khách đổi hạng thẻ hoặc thành phố (bước 8). Một khách lên hạng giữa kỳ sẽ được đếm thành hai người, làm mẫu số của ARPU và Tỷ lệ quay lại phồng lên. Đây là chỗ bài học độ hạt ở bước này và bài học SCD2 ở bước 8 giao nhau.
 
 **Khai báo độ hạt phải được thực thi bằng `UNIQUE` constraint trong DDL**, không chỉ ghi trong tài liệu.
 
@@ -166,9 +171,9 @@ Bảng có hàng là Fact, cột là dim, ô đánh dấu nghĩa là Fact đó d
 
 Ba kết luận đọc trực tiếp từ matrix của thiết kế này:
 
-**`dim_date`, `dim_customer`, `dim_salon` có mặt ở gần như mọi Fact** → ba dim này dựng đầu tiên, và tuyệt đối không được tồn tại hai bản. Mỗi mart tự dựng một `dim_customer` riêng là con đường chắc chắn dẫn tới mỗi bộ phận một con số.
+**`dim_date` có mặt ở 10/10 Fact, `dim_customer` và `dim_salon` ở 9/10** (đều thiếu ở `fact_ad_spend`) → ba dim này dựng đầu tiên, và tuyệt đối không được tồn tại hai bản. Mỗi mart tự dựng một `dim_customer` riêng dẫn tới nhiều định nghĩa khách hàng song song và số liệu lệch nhau giữa các bộ phận.
 
-**`fact_ad_spend` có độ hạt thô hơn hẳn** (ngày × chiến dịch, không có khách hàng) → cấm join trực tiếp với `fact_sales_line`. Muốn tính doanh thu trên đồng quảng cáo phải tổng hợp `fact_sales_line` lên mức ngày × chiến dịch trước.
+**`fact_ad_spend` có độ hạt thô hơn hẳn** (ngày × chiến dịch × nền tảng, không có khách hàng) → cấm join trực tiếp với `fact_sales_line`. Muốn tính doanh thu trên đồng quảng cáo phải tổng hợp `fact_sales_line` lên mức ngày × chiến dịch trước.
 
 **`fact_payment` không có `dim_service`** → bảng này không trả lời được "dịch vụ nào thu được nhiều tiền nhất". Đây không phải thiếu sót mà là hệ quả tất yếu của độ hạt: hình thức thanh toán gắn với lần chuyển tiền, không gắn với dòng hoá đơn.
 
@@ -188,7 +193,7 @@ Ba kết luận đọc trực tiếp từ matrix của thiết kế này:
 | Chốt kỳ | 1 | Trạng thái tích luỹ cuối mỗi kỳ | `fact_customer_monthly_snapshot` — số dư điểm, hạng thẻ cuối tháng |
 | Chốt tiến trình | 1 | Thời gian giữa các bước và tỷ lệ rơi từng bước | `fact_booking_lifecycle` — phễu đặt lịch → thanh toán |
 
-`fact_booking_lifecycle` là bảng đắt giá nhất cho vận hành: một câu truy vấn ra ngay phễu 5 bậc kèm số giờ mỗi chặng. Đây cũng là bảng duy nhất trong datamart được `UPDATE`.
+`fact_booking_lifecycle` là bảng có giá trị vận hành cao nhất: một câu truy vấn ra ngay phễu 5 bậc kèm số giờ mỗi chặng. Đây là bảng **Fact** duy nhất được `UPDATE`. Các dim SCD2 cũng bị `UPDATE` khi đóng phiên bản cũ và khi ghi đè thuộc tính Type 1.
 
 ### Lưu lịch sử bằng SCD Type 2
 
@@ -205,8 +210,8 @@ Khách ở hạng Bạc tháng 1, lên Vàng tháng 6. Câu hỏi *"doanh thu th
 
 | # | Quy tắc | Vi phạm thì |
 |---|---|---|
-| 1 | Không lưu tỷ lệ trong Fact, chỉ lưu tử số và mẫu số | Salon A 90/100 = 90%, Salon B 10/900 = 1,1%. `AVG` ra **45,6%**; đúng là `(90+10)/(100+900)` = **10%**. Lệch 4,5 lần |
-| 2 | Lưu biến động, không lưu số dư | Khách có 500 điểm cuối tháng 1, 700 tháng 2, 900 tháng 3. `SUM` ra 2.100 — vô nghĩa; đúng là 900 |
+| 1 | Không lưu tỷ lệ trong Fact, chỉ lưu tử số và mẫu số | Chi nhánh A 90/100 = 90%, Chi nhánh B 10/900 = 1,1%. `AVG` ra **45,6%**; đúng là `(90+10)/(100+900)` = **10%**. Lệch 4,6 lần |
+| 2 | Số dư là measure **semi-additive**: cộng được theo mọi chiều **trừ thời gian**. Fact giao dịch lưu biến động (`point_delta`); periodic snapshot được phép lưu số dư cuối kỳ nhưng phải lọc đúng một kỳ trước khi tổng hợp | Khách có 500 điểm cuối tháng 1, 700 tháng 2, 900 tháng 3. `SUM` qua 3 tháng ra 2.100 — vô nghĩa; số dư cuối kỳ là 900, số dư bình quân kỳ là 700 |
 | 3 | Mọi dim có dòng `-1` cho trường hợp không xác định | Fact thiếu khoá bị `INNER JOIN` xoá mất, doanh thu hụt không dấu vết |
 
 → [docs/01-erd/star-schema.md](docs/01-erd/star-schema.md) · DDL: [dim](docs/03-ddl/03-dm-dimension.md) · [Fact](docs/03-ddl/04-dm-fact.md)
@@ -215,14 +220,14 @@ Khách ở hạng Bạc tháng 1, lên Vàng tháng 6. Câu hỏi *"doanh thu th
 
 ## 9. CHỈ TIÊU
 
-Bắt đầu từ câu hỏi của nghiệp vụ, không bắt đầu từ cột có trong database. Làm ngược lại sẽ ra hàng chục báo cáo không ai dùng.
+Bắt đầu từ câu hỏi của nghiệp vụ, không bắt đầu từ cột có trong database. Làm ngược lại tạo ra báo cáo không gắn với câu hỏi nghiệp vụ nào, và không đạt tiêu chí nghiệm thu số 6 (từ 80% quản lý chi nhánh mở báo cáo mỗi tuần).
 
 | Nhóm | Số chỉ tiêu | Nguồn chính |
 |---|---|---|
 | Tài chính | 6 | `fact_sales_line`, `fact_payment` |
 | Vận hành | 7 | `fact_appointment`, `fact_treatment`, `fact_booking_lifecycle` |
 | Khách hàng | 7 | `agg_customer_360`, `fact_feedback` |
-| Marketing | 4 | `fact_ad_spend`, `fact_campaign_send` |
+| Marketing | 4 | `fact_ad_spend`; `fact_campaign_send` — **chưa chốt độ hạt, GĐ 7** ([căn cứ](README.md#hai-bảng-chưa-thiết-kế-chi-tiết)) |
 
 Mỗi chỉ tiêu phải khai báo đủ: công thức, bảng nguồn, kỳ tính, cảnh báo về độ hạt, và **người nghiệp vụ ký duyệt**. Chỉ tiêu chưa có chữ ký không được đưa lên báo cáo trình lãnh đạo — ràng buộc này thực thi bằng cột `approved_by` trong `ctl.metric_definition`.
 
@@ -235,13 +240,13 @@ Mỗi chỉ tiêu phải khai báo đủ: công thức, bảng nguồn, kỳ tí
 | Quy gán kênh marketing | Khách xem Facebook ngày 1, Google ngày 3, đặt ngày 7 — tính cho kênh nào | Marketing + Tài chính |
 | Giá vốn dịch vụ | Chỉ vật tư, hay vật tư cộng phân bổ công kỹ thuật viên | Kế toán |
 
-### Ba chỉ tiêu dễ tính sai
+### Ba chỉ tiêu có ràng buộc tính toán riêng
 
 | Chỉ tiêu | Sai ở đâu | Cách đúng |
 |---|---|---|
 | Tỷ lệ khách quay lại | Không nêu kỳ tính → hiểu là toàn thời gian thì chỉ tăng mãi | Bắt buộc nêu kỳ, đề xuất 12 tháng gần nhất |
 | Tỷ lệ khách rời bỏ | Đặt ngưỡng vắng theo cảm tính | Suy từ phân vị 80–90% khoảng cách giữa hai lượt đến, rà lại mỗi 6 tháng |
-| Giá trị vòng đời khách | Tính trên doanh thu → ngân sách marketing dồn về nhóm chi nhiều mà biên lãi mỏng | Tính trên lãi gộp; số năm dự kiến suy từ `1 / tỷ lệ rời bỏ năm` |
+| Giá trị vòng đời khách | Tính trên doanh thu → ngân sách marketing dồn về nhóm khách có doanh thu cao nhưng tỷ suất lãi gộp thấp | Tính trên lãi gộp; số năm dự kiến suy từ `1 / tỷ lệ rời bỏ năm` |
 
 **Lưu ý về thang đo hài lòng:** thang 1–5 sao dùng để tính CSAT. NPS được định nghĩa trên thang 0–10 (promoter 9–10, detractor 0–6) và là **câu hỏi khác**, phải thu riêng. Gọi thang 1–5 là NPS là sai định nghĩa và không so được với số liệu ngành.
 
@@ -256,17 +261,17 @@ Tám bộ báo cáo, mỗi bộ có người dùng và tần suất xác định
 | Báo cáo | Người dùng | Tần suất |
 |---|---|---|
 | Tổng quan điều hành | Tổng Giám đốc, Giám đốc Vận hành | Ngày |
-| Hiệu quả salon | Quản lý salon | Ngày |
+| Hiệu quả chi nhánh | Quản lý chi nhánh | Ngày |
 | Cơ cấu dịch vụ và sản phẩm | Sản phẩm | Tuần |
 | Năng suất kỹ thuật viên | Vận hành, Nhân sự | Tuần |
 | Khách hàng và giữ chân | CRM, Marketing | Tuần |
 | Hiệu quả marketing | Marketing | Ngày |
 | Chất lượng dữ liệu | Bộ phận Dữ liệu | Ngày |
-| Theo dõi salon tức thời | Lễ tân, Quản lý | Thời gian thực |
+| Theo dõi chi nhánh tức thời | Lễ tân, Quản lý | Thời gian thực |
 
 **Chuẩn tối thiểu cho mọi báo cáo:** ghi rõ thời điểm cập nhật cuối · ghi rõ định nghĩa chỉ tiêu khớp từ điển · cho phép xuất dữ liệu để người dùng tự kiểm · không quá 7 biểu đồ một trang · luôn có mốc so sánh (cùng kỳ, kỳ trước, hoặc mục tiêu).
 
-Báo cáo thời gian thực phải ghi rõ **"số liệu tạm tính"** — nhánh này chưa khử trùng lặp, chưa đối soát POS, chưa qua 56 quy tắc chất lượng. Số chính thức luôn lấy từ datamart.
+Báo cáo thời gian thực phải ghi rõ **"số liệu tạm tính"** — nhánh này chưa khử trùng lặp, chưa đối soát POS, chưa qua 56 quy tắc chất lượng. Số chính thức luôn lấy từ kho phân tích.
 
 → [docs/07-analytics/chi-tieu-va-bao-cao.md](docs/07-analytics/chi-tieu-va-bao-cao.md#2-báo-cáo-và-phân-tích)
 
@@ -282,7 +287,7 @@ Báo cáo thời gian thực phải ghi rõ **"số liệu tạm tính"** — nh
 
 **Trước khi phát hành một chỉ tiêu:**
 - Công thức đã có chữ ký nghiệp vụ?
-- Tính từ đúng một Fact, không chia trực tiếp giữa hai Fact khác độ hạt?
+- Không join trực tiếp hai Fact; nếu chỉ tiêu cần cả hai thì tổng hợp từng Fact về cùng độ hạt trước rồi mới chia (drilling across)?
 - Có cần `DISTINCT` không?
 - Đã nêu kỳ tính, múi giờ, mốc chốt ngày?
 - Xử lý NULL và chia cho 0 thế nào?

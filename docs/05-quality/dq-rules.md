@@ -250,7 +250,7 @@ WHERE  source_name = 'pos'
 | `DQ-SCD-002` | Mọi `dm.dim_*` SCD2 | Mỗi business key có đúng 1 phiên bản `is_current = 1` | 0 vi phạm | `BLOCK` | Data |
 | `DQ-SCD-003` | Mọi `dm.dim_*` | Tồn tại dòng Unknown `sk = -1` | 0 thiếu | `BLOCK` | Data |
 | `DQ-ALLOC-001` | `dm.bridge_sales_promotion` | Tổng `allocation_factor` theo dòng hoá đơn = 1 | 0 vi phạm | `BLOCK` | Data |
-| `DQ-DIM-001` | `dm.dim_booking_junk` | Đủ 81 dòng (80 tổ hợp + Unknown) | 0 thiếu | `BLOCK` | Data |
+| `DQ-DIM-001` | `dm.dim_booking_junk` | Đủ 80 dòng (79 tổ hợp sinh tự động + dòng Unknown `('unknown',0,0,0,0)`) | 0 thiếu | `BLOCK` | Data |
 | `DQ-DIM-002` | `dm.dim_date` | Có đủ ngày cho `business_date` đang nạp | 0 thiếu | `BLOCK` | Data |
 | `DQ-DIM-003` | `dm.dim_time` | Đủ 1.440 dòng | 0 thiếu | `BLOCK` | Data |
 
@@ -287,10 +287,10 @@ HAVING ABS(SUM(allocation_factor) - 1.0) > 0.000001;
 | Accuracy | 13 | 11 | 2 | 0 |
 | Consistency | 6 | 5 | 1 | 0 |
 | Uniqueness | 9 | 9 | 0 | 0 |
-| Validity | 9 | 5 | 4 | 0 |
+| Validity | 9 | 4 | 5 | 0 |
 | Freshness | 6 | 3 | 2 | 1 |
 | Mô hình chiều | 7 | 7 | 0 | 0 |
-| **Tổng** | **56** | **44** | **11** | **1** |
+| **Tổng** | **56** | **43** | **12** | **1** |
 
 ## Phụ thuộc chưa có
 

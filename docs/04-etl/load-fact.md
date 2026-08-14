@@ -14,7 +14,7 @@
 
 ## 1. Ba nguyên tắc chung
 
-**Idempotent.** Chạy lại với cùng dữ liệu nguồn phải ra cùng kết quả. Pipeline sẽ hỏng và sẽ có người bấm retry; không idempotent thì mỗi lần retry cộng thêm một bản doanh thu.
+**Idempotent.** Chạy lại với cùng dữ liệu nguồn phải ra cùng kết quả. Sự cố hạ tầng dẫn tới chạy lại là tình huống thường trực trong vận hành; không lũy đẳng thì mỗi lần chạy lại cộng thêm một bản doanh thu.
 
 **Tra khoá dimension bằng `LEFT JOIN` + `ISNULL(..., -1)`.** `INNER JOIN` làm mất dòng fact khi thiếu dimension — mất doanh thu không có thông báo lỗi.
 
@@ -75,7 +75,7 @@ BEGIN
         ISNULL(pr.promotion_sk,-1),
         ISNULL(cp.campaign_sk, -1),
         ISNULL(j.booking_junk_sk, -1),
-        l.invoice_line_id, i.invoice_no, l.invoice_line_no, l.treatment_id, t.appointment_id,
+        l.invoice_line_id, i.invoice_no, l.invoice_line_no, l.treatment_id, ap.booking_id,
         l.quantity, l.unit_price_amount, l.gross_amount,
         l.promo_discount_amount, l.member_discount_amount, l.discount_amount,
         l.net_amount, l.tax_amount, l.net_excl_tax_amount,
@@ -96,13 +96,8 @@ BEGIN
     LEFT JOIN  dm.dim_product   p  ON p.product_id   = l.product_id
     LEFT JOIN  dm.dim_promotion pr ON pr.promotion_id = l.promotion_id
     LEFT JOIN  dm.dim_campaign  cp ON cp.campaign_id  = i.campaign_id
-    -- Junk: khớp đồng thời cả 5 cờ
-    LEFT JOIN  dm.dim_booking_junk j
-           ON  j.booking_channel      = ISNULL(b.booking_channel, 'unknown')
-           AND j.is_first_visit       = CASE WHEN fv.customer_id IS NULL THEN 1 ELSE 0 END
-           AND j.is_promotion_applied = CASE WHEN l.promotion_id IS NOT NULL THEN 1 ELSE 0 END
-           AND j.is_member            = CASE WHEN l.member_discount_amount > 0 THEN 1 ELSE 0 END
-           AND j.is_rescheduled       = CASE WHEN b.booking_status = 'rescheduled' THEN 1 ELSE 0 END
+    -- ap, b, fv phải khai TRƯỚC join vào junk dim: mệnh đề ON chỉ tham chiếu được
+    -- các nguồn đã xuất hiện phía trên, đặt sau sẽ lỗi Msg 4104 could not be bound.
     LEFT JOIN  crt.appointment  ap ON ap.appointment_id = t.appointment_id
     LEFT JOIN  crt.booking      b  ON b.booking_id = ap.booking_id
     -- is_first_visit: có hoá đơn nào TRƯỚC service_at của cùng khách hay không
@@ -112,15 +107,26 @@ BEGIN
                    AND  i2.service_at  < i.service_at
                    AND  i2._is_deleted = 0
                    AND  i2.invoice_status <> 'void') fv
+    -- Junk: khớp đồng thời cả 5 cờ
+    LEFT JOIN  dm.dim_booking_junk j
+           ON  j.booking_channel      = ISNULL(b.booking_channel, 'unknown')
+           AND j.is_first_visit       = CASE WHEN fv.customer_id IS NULL THEN 1 ELSE 0 END
+           AND j.is_promotion_applied = CASE WHEN l.promotion_id IS NOT NULL THEN 1 ELSE 0 END
+           AND j.is_member            = CASE WHEN l.member_discount_amount > 0 THEN 1 ELSE 0 END
+           AND j.is_rescheduled       = CASE WHEN b.booking_status = 'rescheduled' THEN 1 ELSE 0 END
     WHERE  CAST(i.service_at AS DATE) = @business_date
       AND  i.invoice_status <> 'void'
       AND  i._is_deleted = 0
       AND  l._is_deleted = 0;
 
+    -- Chỉ tiến, không lùi: nếu không có điều kiện này thì một lần backfill ngày cũ
+    -- sẽ đẩy watermark về quá khứ và lần thu nạp incremental kế tiếp đọc lại từ đó.
+    -- Dòng watermark của bước nạp dm tách riêng khỏi dòng của bước thu nạp.
     UPDATE ctl.watermark
        SET last_value = CONVERT(VARCHAR(10), @business_date, 23),
            last_run_id = @run_id, updated_at = SYSUTCDATETIME()
-     WHERE source_name = 'pos' AND entity_name = 'invoice_line';
+     WHERE source_name = 'dm' AND entity_name = 'fact_sales_line'
+       AND last_value < CONVERT(VARCHAR(10), @business_date, 23);
 
     COMMIT;
 END
@@ -190,7 +196,7 @@ BEGIN
            b.customer_id, b.salon_id, b.booked_at, b.booking_status, b.promotion_id, b.campaign_id,
            ap.appointment_id, ap.checkin_at, ap.is_no_show,
            t.treatment_id, t.employee_id, t.service_id, t.started_at,
-           pay.paid_at, pay.net_amount,
+           pay.paid_at, amt.net_amount,
            fb.feedback_at,
            b.cancelled_at
     INTO   #chg
@@ -199,11 +205,18 @@ BEGIN
     OUTER APPLY (SELECT TOP (1) t.treatment_id, t.employee_id, t.service_id, t.started_at
                  FROM crt.treatment t WHERE t.appointment_id = ap.appointment_id
                  ORDER BY t.started_at) t
-    OUTER APPLY (SELECT MIN(p.paid_at) AS paid_at, SUM(l.net_amount) AS net_amount
+    -- Tách làm hai: nối invoice_line với payment trên cùng invoice_id sinh tích
+    -- Descartes, nên hoá đơn trả 2 lần sẽ làm net_amount gấp đôi.
+    OUTER APPLY (SELECT SUM(l.net_amount) AS net_amount
+                 FROM crt.invoice_line l
+                 WHERE l.treatment_id = t.treatment_id AND l._is_deleted = 0) amt
+    OUTER APPLY (SELECT MIN(p.paid_at) AS paid_at
                  FROM crt.invoice i
-                 JOIN crt.invoice_line l ON l.invoice_id = i.invoice_id
-                 JOIN crt.payment p      ON p.invoice_id = i.invoice_id
-                 WHERE l.treatment_id = t.treatment_id AND p.payment_status = 'completed') pay
+                 JOIN crt.payment p ON p.invoice_id = i.invoice_id
+                 WHERE p.payment_status = 'completed'
+                   AND EXISTS (SELECT 1 FROM crt.invoice_line l2
+                               WHERE l2.invoice_id = i.invoice_id
+                                 AND l2.treatment_id = t.treatment_id)) pay
     OUTER APPLY (SELECT MIN(f.feedback_at) AS feedback_at
                  FROM crt.feedback f WHERE f.treatment_id = t.treatment_id) fb
     WHERE  b._is_deleted = 0
@@ -216,6 +229,15 @@ BEGIN
         OR CAST(b.cancelled_at  AS DATE) = @business_date);
 
     BEGIN TRAN;
+
+    -- crt.appointment.booking_id KHÔNG unique (khách đổi lịch sinh nhiều appointment),
+    -- nên #chg có thể chứa hai dòng cùng booking_id. MERGE gặp khoá trùng sẽ lỗi
+    -- Msg 8672 và XACT_ABORT làm rollback cả job. Giữ lại appointment sớm nhất.
+    WITH dup AS (
+        SELECT ROW_NUMBER() OVER (PARTITION BY booking_id
+                                  ORDER BY checkin_at, appointment_id) AS rn
+        FROM #chg)
+    DELETE FROM dup WHERE rn > 1;
 
     MERGE dm.fact_booking_lifecycle AS tgt
     USING (
@@ -251,12 +273,21 @@ BEGIN
                                      AND s.booked_at >= c.valid_from AND s.booked_at < c.valid_to
         LEFT JOIN dm.dim_salon     sl ON sl.salon_id = s.salon_id
                                      AND s.booked_at >= sl.valid_from AND s.booked_at < sl.valid_to
-        LEFT JOIN dm.dim_employee  e  ON e.employee_id = s.employee_id AND e.is_current = 1
-        LEFT JOIN dm.dim_service   sv ON sv.service_id = s.service_id  AND sv.is_current = 1
+        -- Temporal join, KHÔNG dùng is_current: MERGE chạy lại mỗi đêm nên
+        -- is_current sẽ trỏ booking cũ về phiên bản hiện tại của KTV/dịch vụ,
+        -- làm phễu của quá khứ tự thay đổi sau mỗi lần chạy.
+        LEFT JOIN dm.dim_employee  e  ON e.employee_id = s.employee_id
+                                     AND s.booked_at >= e.valid_from AND s.booked_at < e.valid_to
+        LEFT JOIN dm.dim_service   sv ON sv.service_id = s.service_id
+                                     AND s.booked_at >= sv.valid_from AND s.booked_at < sv.valid_to
         LEFT JOIN dm.dim_promotion pr ON pr.promotion_id = s.promotion_id
         LEFT JOIN dm.dim_campaign  cp ON cp.campaign_id  = s.campaign_id
         LEFT JOIN dm.dim_date dbk ON dbk.full_date = CAST(s.booked_at    AS DATE)
-        LEFT JOIN dm.dim_date dcf ON dcf.full_date = CAST(s.booked_at    AS DATE)
+        -- crt.booking CHƯA có cột confirmed_at, nên mốc xác nhận không lấy được.
+        -- Để NULL thay vì gán bằng booked_at: gán bằng booked_at sẽ cho ra
+        -- "100% booking xác nhận ngay trong ngày đặt" và vi phạm CK_fbc_flag_confirm.
+        -- Bổ sung crt.booking.confirmed_at là điều kiện để tính hours_book_to_confirm.
+        LEFT JOIN dm.dim_date dcf ON 1 = 0
         LEFT JOIN dm.dim_date dci ON dci.full_date = CAST(s.checkin_at   AS DATE)
         LEFT JOIN dm.dim_date dtr ON dtr.full_date = CAST(s.started_at   AS DATE)
         LEFT JOIN dm.dim_date dpy ON dpy.full_date = CAST(s.paid_at      AS DATE)
@@ -358,22 +389,34 @@ BEGIN
              THEN 1 ELSE 0 END,
         @run_id
     FROM   dm.dim_customer c
-    -- Số dư điểm: cộng dồn TOÀN BỘ lịch sử tới hết tháng
+    -- Cả ba phép cộng dưới đây phải gom theo customer_id, KHÔNG theo customer_sk.
+    -- SCD2 sinh một sk mới mỗi lần khách đổi hạng thẻ / thành phố / nhóm tuổi, và
+    -- fact nạp lúc phiên bản cũ còn hiệu lực mang sk cũ. Lọc theo c.customer_sk sẽ
+    -- bỏ hết lịch sử trước lần đổi gần nhất: point_balance mất điểm đã tích,
+    -- last_visit thành NULL nên days_since_last_visit = 9999 và is_churned = 1
+    -- cho khách vẫn đang hoạt động.
+    -- Số dư điểm: cộng dồn TOÀN BỘ lịch sử tới hết tháng, qua mọi phiên bản của khách
     OUTER APPLY (SELECT SUM(l.point_delta) AS point_balance
                  FROM dm.fact_loyalty_txn l
+                 JOIN dm.dim_customer cx ON cx.customer_sk = l.customer_sk
+                                        AND cx.customer_id = c.customer_id
                  JOIN dm.dim_date d ON d.date_key = l.txn_date_key
-                 WHERE l.customer_sk = c.customer_sk AND d.full_date <= @month_end) pt
+                 WHERE d.full_date <= @month_end) pt
     -- Lượt đến gần nhất tính tới hết tháng
     OUTER APPLY (SELECT TOP (1) d.full_date AS last_date, f.salon_sk
                  FROM dm.fact_sales_line f
+                 JOIN dm.dim_customer cx ON cx.customer_sk = f.customer_sk
+                                        AND cx.customer_id = c.customer_id
                  JOIN dm.dim_date d ON d.date_key = f.service_date_key
-                 WHERE f.customer_sk = c.customer_sk AND d.full_date <= @month_end
+                 WHERE d.full_date <= @month_end
                  ORDER BY d.full_date DESC) last_visit
     -- Phát sinh trong chính tháng đó
     OUTER APPLY (SELECT COUNT(DISTINCT f.invoice_no) AS visit_cnt, SUM(f.net_amount) AS net_amount
                  FROM dm.fact_sales_line f
+                 JOIN dm.dim_customer cx ON cx.customer_sk = f.customer_sk
+                                        AND cx.customer_id = c.customer_id
                  JOIN dm.dim_date d ON d.date_key = f.service_date_key
-                 WHERE f.customer_sk = c.customer_sk AND d.year_month = @year_month) mtd
+                 WHERE d.year_month = @year_month) mtd
     WHERE  c.is_current = 1 AND c.customer_sk <> -1;
     COMMIT;
 END

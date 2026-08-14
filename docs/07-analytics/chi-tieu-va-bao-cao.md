@@ -17,30 +17,30 @@ Bắt đầu bằng câu hỏi thật của ban lãnh đạo: *"Các salon đang
 
 **Nhóm Tài chính**
 
-| KPI | Là gì | Công thức | Nguồn | Lưu ý grain |
+| KPI | Định nghĩa | Công thức | Nguồn | Lưu ý grain |
 |---|---|---|---|---|
 | **Net Revenue** | Doanh thu sau giảm giá | `SUM(net_amount)` | `fact_sales_line` | Không cộng thêm `fact_payment` — sẽ đếm 2 lần |
 | **Cash Collected** | Tiền thực thu | `SUM(payment_amount)` | `fact_payment` | Khác Net Revenue khi có trả trước/nợ |
 | **ATV** (Average Ticket Value) | Giá trị hoá đơn bình quân | `SUM(net_amount) / COUNT(DISTINCT invoice_no)` | `fact_sales_line` | **Phải** có `DISTINCT` — grain là dòng hoá đơn, không phải hoá đơn |
-| **ARPU** | Doanh thu bình quân/khách | `SUM(net_amount) / COUNT(DISTINCT customer_sk)` | `fact_sales_line` | Chốt rõ kỳ tính |
+| **ARPU** | Doanh thu bình quân/khách | `SUM(f.net_amount) / COUNT(DISTINCT d.customer_id)` — nối `fact_sales_line f JOIN dim_customer d ON d.customer_sk = f.customer_sk`. Không dùng `COUNT(DISTINCT customer_sk)`: SCD2 sinh nhiều `sk` cho một khách nên mẫu số bị phồng | `fact_sales_line` + `dim_customer` | Chốt rõ kỳ tính |
 | **Gross Margin** | Lãi gộp | `SUM(net_amount − cogs_amount)` | `fact_sales_line` | **Cần Kế toán chốt** cách tính COGS dịch vụ: chỉ vật tư, hay vật tư + phân bổ công KTV. Hai cách cho biên lãi rất khác nhau |
 | **Discount Rate** | Tỷ lệ giảm giá | `SUM(discount_amount) / SUM(gross_amount)` | `fact_sales_line` | Cảnh báo nếu > 20% |
 
 **Nhóm Vận hành**
 
-| KPI | Là gì | Công thức | Nguồn |
+| KPI | Định nghĩa | Công thức | Nguồn |
 |---|---|---|---|
 | **Booking Conversion** | Tỷ lệ xem → đặt | Tổng hợp **từng fact về cùng grain `ngày × salon`** rồi mới chia: `booking_cnt / session_cnt`. **Không** chia trực tiếp giữa hai fact khác grain | `agg_funnel_daily` |
 | **No-show Rate** | Tỷ lệ khách không đến | `COUNT(no-show) / COUNT(appointment)` | `fact_appointment` |
 | **Cancellation Rate** | Tỷ lệ huỷ | `COUNT(cancelled) / COUNT(booking)` | `fact_booking_line` |
-| **Therapist Utilization** | Tỷ lệ giờ KTV có khách | `SUM(actual_duration) / SUM(scheduled_hours)` | `fact_treatment` + lịch làm việc |
+| **Therapist Utilization** | Tỷ lệ giờ KTV có khách | `SUM(busy_minutes) * 1.0 / NULLIF(SUM(available_minutes), 0)` — cả hai cùng đơn vị phút; chia phút cho giờ làm kết quả phồng 60 lần | `fact_treatment` + lịch làm việc (**chưa có nguồn**) |
 | **Bed Occupancy** | Tỷ lệ lấp buồng | `giờ buồng có khách / giờ buồng mở cửa` | `fact_treatment` + `dim_room` |
 | **Up-sell Rate** | Tỷ lệ bán thêm tại chỗ | `COUNT(treatment không có trong booking) / COUNT(treatment)` | `fact_treatment` |
 | **Avg Wait Time** | Thời gian chờ bình quân | `AVG(treatment_start − checkin_at)` | `fact_booking_lifecycle` |
 
 **Nhóm Khách hàng**
 
-| KPI | Là gì | Công thức | Nguồn |
+| KPI | Định nghĩa | Công thức | Nguồn |
 |---|---|---|---|
 | **New vs Returning** | Cơ cấu khách mới/cũ | Đếm theo cờ `is_first_visit` | `fact_sales_line` |
 | **Repeat Rate** | Tỷ lệ khách quay lại | `khách có ≥ 2 lượt TRONG KỲ / khách có ≥ 1 lượt trong kỳ`. **Bắt buộc nêu kỳ** (đề xuất: 12 tháng gần nhất) | `fact_sales_line` |
@@ -48,12 +48,12 @@ Bắt đầu bằng câu hỏi thật của ban lãnh đạo: *"Các salon đang
 | **Churn Rate** | Tỷ lệ mất khách | `khách vượt ngưỡng vắng / khách active`. **Ngưỡng phải suy ra từ dữ liệu**, xem ghi chú dưới | `agg_customer_360` |
 | **CSAT** | Tỷ lệ hài lòng (thang 1–5 sao) | `SUM(is_satisfied) / SUM(response_count)` với hài lòng = rating ≥ 4 | `fact_feedback` |
 | **NPS** | Chỉ số thiện cảm (thang 0–10) | `%promoter − %detractor`. **Chỉ tính trên phiếu có `nps_score`**, xem ghi chú dưới | `fact_feedback` |
-| **Tier Upgrade Rate** | Tỷ lệ nâng hạng | `số nâng hạng trong kỳ / số thành viên đầu kỳ` | `fact_loyalty_txn` |
+| **Tier Upgrade Rate** | Tỷ lệ nâng hạng | Tử số: đếm cặp phiên bản liền nhau trong `dim_customer` có `tier_rank` tăng và `valid_from` nằm trong kỳ. Mẫu số: số thành viên ở `fact_customer_monthly_snapshot` của kỳ trước. `fact_loyalty_txn` **không** chứa hạng thẻ nên không tính được từ đó | `dim_customer` + `fact_customer_monthly_snapshot` |
 
 **Ba ghi chú phương pháp cho nhóm chỉ số khách hàng** — đây là phần dễ làm sai nhất và thuộc trách nhiệm của DA, không phải của kỹ thuật:
 
 **1. NPS và CSAT là hai thang đo khác nhau, không quy đổi được cho nhau.**
-NPS được định nghĩa trên thang **0–10** (promoter 9–10, detractor 0–6, còn lại là passive). Thang **1–5 sao** dùng để tính **CSAT**, không tính được NPS. Nếu công ty muốn có NPS thì phải **thêm một câu hỏi riêng** *"Bạn có sẵn sàng giới thiệu Facial Bar cho bạn bè?"* trên thang 0–10 — vì vậy `fact_feedback` có cột `nps_score` riêng, cho phép NULL.
+NPS được định nghĩa trên thang **0–10** (promoter 9–10, detractor 0–6, còn lại là passive). Thang **1–5 sao** dùng để tính **CSAT**, không tính được NPS. Nếu công ty muốn có NPS thì phải **thêm một câu hỏi riêng** về mức độ sẵn sàng giới thiệu Facial Bar cho người khác, trên thang 0–10 — vì vậy `fact_feedback` có cột `nps_score` riêng, cho phép NULL.
 → Báo cáo hài lòng theo sao phải gọi là **CSAT**. Gọi là NPS là sai định nghĩa và sẽ không so sánh được với số liệu ngành.
 
 **2. Ngưỡng churn phải suy ra từ phân bố khoảng cách giữa hai lượt đến, không được chọn theo cảm tính.**
@@ -76,7 +76,7 @@ FROM   gaps WHERE gap_days IS NOT NULL;
 Con số 90 ngày chỉ là **giá trị khởi tạo tạm**; phải thay bằng kết quả truy vấn trên và **rà lại mỗi 6 tháng**. Ghi rõ ngưỡng đang dùng vào Data Dictionary.
 
 **3. CLV phải tính trên lãi gộp, không tính trên doanh thu.**
-Công thức doanh thu × tần suất × tuổi thọ trả lời câu "khách mang lại bao nhiêu **doanh thu**", không trả lời "khách mang lại bao nhiêu **giá trị**" — và sẽ khiến ngân sách marketing bị phân bổ sai về phía nhóm khách chi nhiều nhưng biên lãi mỏng.
+Công thức doanh thu × tần suất × tuổi thọ trả lời câu "khách mang lại bao nhiêu **doanh thu**", không trả lời "khách mang lại bao nhiêu **giá trị**" — và sẽ khiến ngân sách marketing bị phân bổ sai về phía nhóm khách có doanh thu cao nhưng tỷ suất lãi gộp thấp.
 
 | Mức | Công thức | Khi nào dùng |
 |---|---|---|
@@ -88,7 +88,7 @@ Công thức doanh thu × tần suất × tuổi thọ trả lời câu "khách 
 
 **Nhóm Marketing**
 
-| KPI | Là gì | Công thức | Nguồn |
+| KPI | Định nghĩa | Công thức | Nguồn |
 |---|---|---|---|
 | **CAC** | Chi phí thu hút 1 khách mới | `SUM(ad_spend) / COUNT(khách mới)` | `fact_ad_spend` + `fact_sales_line` |
 | **ROAS** | Doanh thu trên 1 đồng quảng cáo | `revenue quy gán / ad_spend` | `fact_ad_spend` + `fact_sales_line` |

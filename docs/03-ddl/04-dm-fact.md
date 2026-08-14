@@ -1,6 +1,6 @@
-# DDL — Schema `dm` · Fact và Bridge
+# DDL — Schema `dm` · Fact
 
-10 fact table đủ 3 loại (transaction, periodic snapshot, accumulating snapshot) và 1 bridge table.
+10 fact table đủ 3 loại: transaction, periodic snapshot, accumulating snapshot. Bảng cầu nối `dm.bridge_sales_promotion` nằm ở [05-svg-bi.md mục 1](05-svg-bi.md).
 
 Grain từng bảng: [01-erd/grain.md](../01-erd/grain.md). Dimension nào dùng cho fact nào: [01-erd/bus-matrix.md](../01-erd/bus-matrix.md). Quy trình nạp: [04-etl/load-fact.md](../04-etl/load-fact.md).
 
@@ -89,7 +89,7 @@ CREATE UNIQUE INDEX UX_fact_sales_line_grain
 
 **1. `service_date_key` làm khoá phân vùng, không phải `invoice_date_key`.** Nghiệp vụ ghi nhận doanh thu **theo ngày dịch vụ được thực hiện** (mục 4.3), nên hầu hết truy vấn lọc theo cột này. Phân vùng phải theo cột được lọc nhiều nhất, nếu không thì partition pruning vô dụng.
 
-**2. `net_amount` được lưu vật lý, không dùng computed column.** Có thể khai báo `AS (gross_amount - discount_amount) PERSISTED`, nhưng chọn cách lưu vật lý + `CHECK` + DQ rule vì: (a) khi debug thấy ngay giá trị ETL đã tính; (b) không lệ thuộc cú pháp riêng của SQL Server — nhất quán với đường thoát di trú ở [mục 7.6](../08-operations/van-hanh.md#6-khả-năng-mở-rộng-và-phục-hồi).
+**2. `net_amount` được lưu vật lý, không dùng computed column.** Có thể khai báo `AS (gross_amount - discount_amount) PERSISTED`, nhưng chọn cách lưu vật lý + `CHECK` + DQ rule vì: (a) khi debug thấy ngay giá trị ETL đã tính; (b) không lệ thuộc cú pháp riêng của SQL Server, nhất quán với yêu cầu giữ chi phí di trú thấp ở [mục 7.6](../08-operations/van-hanh.md#6-khả-năng-mở-rộng-và-phục-hồi).
 
 **3. Cột `line_count` luôn bằng 1.** Đây là *counting fact*. Cần nói rõ nó **không** giải quyết vấn đề grain: ở mức dòng thì `SUM(line_count)` và `COUNT(*)` cho **kết quả y hệt nhau** — cả hai đều đếm số dòng hoá đơn, không đếm số hoá đơn. Muốn đếm số hoá đơn vẫn phải `COUNT(DISTINCT invoice_no)`.
 
@@ -130,7 +130,9 @@ CREATE TABLE dm.fact_payment (
     CONSTRAINT FK_fact_payment_dim_salon
         FOREIGN KEY (salon_sk) REFERENCES dm.dim_salon(salon_sk),
     CONSTRAINT FK_fact_payment_dim_pm
-        FOREIGN KEY (payment_method_sk) REFERENCES dm.dim_payment_method(payment_method_sk)
+        FOREIGN KEY (payment_method_sk) REFERENCES dm.dim_payment_method(payment_method_sk),
+    CONSTRAINT FK_fact_payment_dim_time
+        FOREIGN KEY (payment_time_key) REFERENCES dm.dim_time(time_key)
 ) ON ps_date_key_month (payment_date_key);
 
 CREATE CLUSTERED COLUMNSTORE INDEX CCI_fact_payment
@@ -139,7 +141,7 @@ CREATE UNIQUE INDEX UX_fact_payment_grain
     ON dm.fact_payment (payment_date_key, payment_id);
 ```
 
-> 💡 **Lưu `payment_status = 'failed'` trong fact là có chủ đích.** Nhiều thiết kế chỉ nạp giao dịch thành công, và thế là mất vĩnh viễn khả năng trả lời "tỷ lệ thanh toán thất bại theo cổng thanh toán là bao nhiêu" — một chỉ số vận hành quan trọng. Đổi lại, **mọi truy vấn doanh thu bắt buộc phải có `WHERE payment_status = 'completed'`**, nên phải tạo view chuẩn để người dùng không quên:
+> **Lưu `payment_status = 'failed'` trong fact là có chủ đích.** Nhiều thiết kế chỉ nạp giao dịch thành công, và thế là mất vĩnh viễn khả năng trả lời "tỷ lệ thanh toán thất bại theo cổng thanh toán là bao nhiêu" — một chỉ số vận hành quan trọng. Đổi lại, **mọi truy vấn doanh thu bắt buộc phải có `WHERE payment_status = 'completed'`**, nên phải tạo view chuẩn để người dùng không quên:
 > ```sql
 > CREATE VIEW dm.v_fact_payment_completed AS
 > SELECT * FROM dm.fact_payment WHERE payment_status = 'completed';
@@ -344,7 +346,9 @@ CREATE TABLE dm.fact_ad_spend (
     CONSTRAINT FK_fact_ad_spend_dim_date
         FOREIGN KEY (spend_date_key) REFERENCES dm.dim_date(date_key),
     CONSTRAINT FK_fact_ad_spend_dim_campaign
-        FOREIGN KEY (campaign_sk) REFERENCES dm.dim_campaign(campaign_sk)
+        FOREIGN KEY (campaign_sk) REFERENCES dm.dim_campaign(campaign_sk),
+    CONSTRAINT FK_fact_ad_spend_dim_promo
+        FOREIGN KEY (promotion_sk) REFERENCES dm.dim_promotion(promotion_sk)
 );
 ```
 
@@ -391,14 +395,28 @@ CREATE TABLE dm.fact_booking_lifecycle (
     _updated_at         DATETIME2(3) NOT NULL CONSTRAINT DF_fbc_upd DEFAULT (SYSUTCDATETIME()),
     CONSTRAINT PK_fact_booking_lifecycle PRIMARY KEY CLUSTERED (booking_id),
     -- Cờ phễu phải nhất quán với mốc thời gian tương ứng
-    CONSTRAINT CK_fbc_flag_confirm CHECK ((reached_confirmed = 1) = (confirmed_date_key IS NOT NULL)),
-    CONSTRAINT CK_fbc_flag_checkin CHECK ((reached_checkin   = 1) = (checkin_date_key   IS NOT NULL)),
-    CONSTRAINT CK_fbc_flag_treat   CHECK ((reached_treatment = 1) = (treatment_date_key IS NOT NULL)),
-    CONSTRAINT CK_fbc_flag_pay     CHECK ((reached_payment   = 1) = (paid_date_key      IS NOT NULL)),
-    CONSTRAINT CK_fbc_flag_cancel  CHECK ((is_cancelled      = 1) = (cancelled_date_key IS NOT NULL)),
+    -- T-SQL không có kiểu boolean nên KHÔNG so sánh được hai vị từ với nhau
+    -- (`(a = 1) = (b IS NOT NULL)` là lỗi cú pháp). Phải viết thành hai nhánh OR.
+    CONSTRAINT CK_fbc_flag_confirm CHECK ((reached_confirmed = 0 AND confirmed_date_key IS NULL)
+                                       OR (reached_confirmed = 1 AND confirmed_date_key IS NOT NULL)),
+    CONSTRAINT CK_fbc_flag_checkin CHECK ((reached_checkin   = 0 AND checkin_date_key   IS NULL)
+                                       OR (reached_checkin   = 1 AND checkin_date_key   IS NOT NULL)),
+    CONSTRAINT CK_fbc_flag_treat   CHECK ((reached_treatment = 0 AND treatment_date_key IS NULL)
+                                       OR (reached_treatment = 1 AND treatment_date_key IS NOT NULL)),
+    CONSTRAINT CK_fbc_flag_pay     CHECK ((reached_payment   = 0 AND paid_date_key      IS NULL)
+                                       OR (reached_payment   = 1 AND paid_date_key      IS NOT NULL)),
+    CONSTRAINT CK_fbc_flag_cancel  CHECK ((is_cancelled      = 0 AND cancelled_date_key IS NULL)
+                                       OR (is_cancelled      = 1 AND cancelled_date_key IS NOT NULL)),
     -- Huỷ và no-show loại trừ nhau; huỷ thì không thể đã thanh toán
     CONSTRAINT CK_fbc_excl CHECK (is_cancelled = 0 OR (is_no_show = 0 AND reached_payment = 0)),
-    CONSTRAINT FK_fbc_dim_date     FOREIGN KEY (booked_date_key) REFERENCES dm.dim_date(date_key),
+    CONSTRAINT FK_fbc_dim_date     FOREIGN KEY (booked_date_key)    REFERENCES dm.dim_date(date_key),
+    -- 6 mốc phễu là nullable; FK vẫn hợp lệ vì NULL luôn thoả ràng buộc khoá ngoại
+    CONSTRAINT FK_fbc_dim_date_cf  FOREIGN KEY (confirmed_date_key) REFERENCES dm.dim_date(date_key),
+    CONSTRAINT FK_fbc_dim_date_ci  FOREIGN KEY (checkin_date_key)   REFERENCES dm.dim_date(date_key),
+    CONSTRAINT FK_fbc_dim_date_tr  FOREIGN KEY (treatment_date_key) REFERENCES dm.dim_date(date_key),
+    CONSTRAINT FK_fbc_dim_date_py  FOREIGN KEY (paid_date_key)      REFERENCES dm.dim_date(date_key),
+    CONSTRAINT FK_fbc_dim_date_fb  FOREIGN KEY (feedback_date_key)  REFERENCES dm.dim_date(date_key),
+    CONSTRAINT FK_fbc_dim_date_cx  FOREIGN KEY (cancelled_date_key) REFERENCES dm.dim_date(date_key),
     CONSTRAINT FK_fbc_dim_customer FOREIGN KEY (customer_sk)     REFERENCES dm.dim_customer(customer_sk),
     CONSTRAINT FK_fbc_dim_salon    FOREIGN KEY (salon_sk)        REFERENCES dm.dim_salon(salon_sk),
     CONSTRAINT FK_fbc_dim_employee FOREIGN KEY (employee_sk)     REFERENCES dm.dim_employee(employee_sk),

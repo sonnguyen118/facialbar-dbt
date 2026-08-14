@@ -1,6 +1,6 @@
 # Tra cứu — Quy ước đặt tên, thuật ngữ, checklist
 
-Quy ước đặt tên đối tượng database, giải nghĩa thuật ngữ, checklist trước khi tạo bảng / phát hành chỉ tiêu / đưa pipeline lên production.
+Quy ước đặt tên đối tượng database, giải nghĩa thuật ngữ, bốn checklist: thiết kế bảng mới, chạy `CREATE TABLE`, phát hành chỉ tiêu, đưa đường ống lên môi trường chạy thật.
 
 
 
@@ -35,7 +35,7 @@ Quy ước đặt tên đối tượng database, giải nghĩa thuật ngữ, ch
 | Airflow DAG | `dag_<hành động>_<đối tượng>_<chu kỳ>` | `dag_load_dwh_daily` |
 | Phân vùng S3 | `<cột>=<giá trị>` (kiểu Hive) | `dt=2026-08-14/hour=09` |
 
-> 💡 **Quy ước cho role-playing dimension:** khi một dim đóng nhiều vai trong cùng một fact, **tiền tố vai trò vào tên cột**, không đánh số. Dùng `service_date_key` / `invoice_date_key` chứ không dùng `date_key_1` / `date_key_2` — đọc câu SQL là hiểu ngay đang lọc theo ngày nào.
+> **Quy ước cho role-playing dimension:** khi một dim đóng nhiều vai trong cùng một fact, **tiền tố vai trò vào tên cột**, không đánh số. Dùng `service_date_key` / `invoice_date_key` chứ không dùng `date_key_1` / `date_key_2` — đọc câu SQL là hiểu ngay đang lọc theo ngày nào.
 
 **Năm quy ước bắt buộc, không có ngoại lệ:**
 1. **Mọi timestamp lưu ở UTC**, kiểu `DATETIME2(3)`. Chỉ đổi sang giờ Việt Nam ở tầng hiển thị. Trộn múi giờ trong dữ liệu là loại lỗi cực khó truy vết.

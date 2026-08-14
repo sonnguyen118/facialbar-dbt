@@ -11,13 +11,13 @@ Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê 
 | [00-business/](00-business/) | Hành trình khách hàng, 14 miền nghiệp vụ, 6 quy trình, danh mục sự kiện | Phân tích dữ liệu, Nghiệp vụ |
 | [01-erd/](01-erd/) | Thực thể, quan hệ, độ hạt, star schema, bus matrix | Phân tích dữ liệu |
 | [02-mapping/](02-mapping/) | Ánh xạ nguồn sang đích ở mức cột | Kỹ sư dữ liệu, Phân tích dữ liệu |
-| [03-ddl/](03-ddl/) | DDL 79 bảng theo từng schema | Quản trị cơ sở dữ liệu, Kỹ sư dữ liệu |
+| [03-ddl/](03-ddl/) | DDL 92 bảng theo từng schema | Quản trị cơ sở dữ liệu, Kỹ sư dữ liệu |
 | [04-etl/](04-etl/) | Quy trình nạp, dữ liệu khởi tạo | Kỹ sư dữ liệu |
 | [05-quality/](05-quality/) | 56 quy tắc kiểm soát chất lượng | Phân tích dữ liệu, Kỹ sư dữ liệu |
 | [06-platform/](06-platform/) | Nguồn dữ liệu, thu nạp, hồ dữ liệu, kho, điều phối | Kỹ sư dữ liệu |
 | [07-analytics/](07-analytics/) | Từ điển chỉ tiêu, báo cáo, mô hình dự báo | Phân tích dữ liệu |
 | [08-operations/](08-operations/) | Công nghệ, bảo mật, quản trị, giám sát, mở rộng | Kiến trúc, Vận hành hệ thống |
-| [09-roadmap/](09-roadmap/) | Lộ trình 8 giai đoạn | Quản lý dự án |
+| [09-roadmap/](09-roadmap/) | Lộ trình 9 giai đoạn (GĐ 0–8), 18 tuần | Quản lý dự án |
 | [99-reference/](99-reference/) | Quy ước đặt tên, thuật ngữ, checklist | Chung |
 
 ## Thứ tự đọc khi bắt đầu triển khai
@@ -42,15 +42,15 @@ Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê 
 | [01-erd/grain.md](01-erd/grain.md) | Khai báo độ hạt toàn bộ bảng, double counting, fan-out, additivity |
 | [01-erd/star-schema.md](01-erd/star-schema.md) | Fact và dim, ba loại Fact, SCD, dim đặc biệt, chuẩn hoá và phi chuẩn hoá |
 | [01-erd/bus-matrix.md](01-erd/bus-matrix.md) | Ma trận Fact × dim, conformed dimension, drilling across |
-| [02-mapping/source-to-target.md](02-mapping/source-to-target.md) | Mapping mức cột 15 bảng `crt`, mapping `crt → dm`, ánh xạ danh mục, cột tính trong kho |
+| [02-mapping/source-to-target.md](02-mapping/source-to-target.md) | Mapping mức cột: 15 mục, phủ 19 bảng `crt`, mapping `crt → dm`, ánh xạ danh mục, cột tính trong kho |
 | [03-ddl/00-init.md](03-ddl/00-init.md) | Tạo database và schema, chuẩn kiểu dữ liệu, collation, chính sách NULL, khoá và ràng buộc, index và phân vùng, dự toán dung lượng |
 | [03-ddl/01-lnd.md](03-ddl/01-lnd.md) | 28 bảng vùng đệm, script sinh DDL tự động |
 | [03-ddl/02-crt.md](03-ddl/02-crt.md) | 25 bảng + 1 view tầng đối soát, thứ tự tạo bảng |
 | [03-ddl/03-dm-dimension.md](03-ddl/03-dm-dimension.md) | 13 dim: `dim_date`, `dim_time`, 4 dim SCD2, 6 dim SCD1, junk dimension |
-| [03-ddl/04-dm-fact.md](03-ddl/04-dm-fact.md) | 10 Fact đủ ba loại + 1 bảng cầu nối |
-| [03-ddl/05-svg-bi.md](03-ddl/05-svg-bi.md) | 6 bảng tổng hợp phục vụ báo cáo |
+| [03-ddl/04-dm-fact.md](03-ddl/04-dm-fact.md) | 10 Fact đủ ba loại |
+| [03-ddl/05-svg-bi.md](03-ddl/05-svg-bi.md) | 6 bảng tổng hợp phục vụ báo cáo + bảng cầu nối `dm.bridge_sales_promotion` |
 | [03-ddl/06-ctl-qtn.md](03-ddl/06-ctl-qtn.md) | 9 bảng + 1 view điều khiển và cách ly |
-| [04-etl/seed.md](04-etl/seed.md) | 14 script khởi tạo, kịch bản chạy toàn bộ |
+| [04-etl/seed.md](04-etl/seed.md) | 16 script khởi tạo, kịch bản chạy toàn bộ |
 | [04-etl/load-dimension.md](04-etl/load-dimension.md) | Nạp 13 dim: khuôn SCD2 bốn bước, khuôn SCD1, thuộc tính phái sinh |
 | [04-etl/load-fact.md](04-etl/load-fact.md) | Nạp 10 Fact, accumulating snapshot, periodic snapshot, 6 bảng tổng hợp |
 | [05-quality/dq-rules.md](05-quality/dq-rules.md) | 56 quy tắc trên 7 nhóm, kèm SQL kiểm tra và kịch bản chạy |
@@ -58,8 +58,8 @@ Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê 
 | [06-platform/ho-du-lieu-va-kho.md](06-platform/ho-du-lieu-va-kho.md) | Phân vùng hồ dữ liệu, Iceberg, nạp và kiểm soát, 4 tầng kho, cổng chất lượng, Airflow |
 | [07-analytics/chi-tieu-va-bao-cao.md](07-analytics/chi-tieu-va-bao-cao.md) | Từ điển chỉ tiêu 4 nhóm, bộ báo cáo, 6 bài toán dự báo |
 | [08-operations/van-hanh.md](08-operations/van-hanh.md) | Lựa chọn công nghệ, bảo mật, chất lượng dữ liệu, quản trị, giám sát, mở rộng và phục hồi |
-| [09-roadmap/lo-trinh.md](09-roadmap/lo-trinh.md) | 8 giai đoạn, việc phải làm sớm, mốc kiểm soát |
-| [99-reference/tra-cuu.md](99-reference/tra-cuu.md) | Quy ước đặt tên, thuật ngữ, 3 checklist, bản đồ nghiệp vụ đến bảng |
+| [09-roadmap/lo-trinh.md](09-roadmap/lo-trinh.md) | 9 giai đoạn (GĐ 0–8), việc phải làm sớm, mốc kiểm soát |
+| [99-reference/tra-cuu.md](99-reference/tra-cuu.md) | Quy ước đặt tên, thuật ngữ, 4 checklist, bản đồ nghiệp vụ đến bảng |
 
 ## Tình trạng hoàn thiện
 

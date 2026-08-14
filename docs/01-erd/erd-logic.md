@@ -10,7 +10,7 @@ Entity là một đối tượng nghiệp vụ được biểu diễn thành b�
 
 ### Khái niệm khoá — phân biệt 3 loại
 
-| Loại khoá | Là gì | Ví dụ | Dùng ở đâu |
+| Loại khoá | Định nghĩa | Ví dụ | Dùng ở đâu |
 |---|---|---|---|
 | **Natural Key** (khoá tự nhiên) | Giá trị nghiệp vụ tự nhận diện | Số điện thoại `0901234567` | Nhận diện khách ở tầng nguồn |
 | **Business Key** (khoá nghiệp vụ) | ID do hệ thống nguồn sinh ra | `POS-CUS-00123` | Đối chiếu ngược về nguồn |
@@ -74,7 +74,7 @@ discount_amount  DECIMAL(18,2)
 line_amount      DECIMAL(18,2)    -- = quantity * unit_price - discount_amount
 ```
 
-> 💡 **Khái niệm Header–Line (Đầu–Dòng):** một giao dịch gần như luôn có 2 mức: mức tổng (ai, khi nào, ở đâu) và mức chi tiết (mua cái gì, mấy cái). Tách 2 bảng là chuẩn mực. Gộp lại sẽ khiến dữ liệu khách hàng bị lặp lại theo số dòng dịch vụ → nguồn gốc của double counting.
+> **Khái niệm Header–Line (Đầu–Dòng):** một giao dịch gần như luôn có 2 mức: mức tổng (ai, khi nào, ở đâu) và mức chi tiết (mua cái gì, mấy cái). Tách 2 bảng là chuẩn mực. Gộp lại sẽ khiến dữ liệu khách hàng bị lặp lại theo số dòng dịch vụ → nguồn gốc của double counting.
 
 | Entity | Khoá chính | Grain (1 dòng = ?) | Ghi chú |
 |---|---|---|---|

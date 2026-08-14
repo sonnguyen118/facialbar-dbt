@@ -16,7 +16,7 @@ Chạy **trước tiên**, trước mọi file DDL khác. Thứ tự đầy đ�
 | Iceberg table ở `cleansed` | **Ta thiết kế toàn bộ** | Phần 4.1 |
 | `lnd`, `crt`, `dm`, `svg_bi`, `ctl`, `qtn` | **Ta thiết kế toàn bộ** | **Phần 5 này** |
 
-> 💡 **`crt` chính là mô hình quan hệ chuẩn hoá 3NF của Facial Bar.** Nếu sau này công ty tự viết lại hệ thống booking thay cho POS mua ngoài, schema `crt` là điểm khởi đầu tốt nhất cho OLTP mới — nó đã được đối soát với thực tế nghiệp vụ trong nhiều tháng.
+> **`crt` chính là mô hình quan hệ chuẩn hoá 3NF của Facial Bar.** Nếu sau này công ty tự viết lại hệ thống booking thay cho POS mua ngoài, schema `crt` là điểm khởi đầu tốt nhất cho OLTP mới — nó đã được đối soát với thực tế nghiệp vụ trong nhiều tháng.
 
 ### Khởi tạo database và schema
 
@@ -52,7 +52,7 @@ GO
 | Khoá ngày | `INT` dạng `20260814` | Đọc được bằng mắt, dùng trực tiếp làm partition function. **Đánh đổi:** tốn 4 byte so với `DATE` 3 byte — chấp nhận |
 | Khoá giờ | `SMALLINT` (0–1439 = phút trong ngày) | 2 byte, đủ biểu diễn từng phút |
 | Ngày | `DATE` | 3 byte |
-| Thời điểm | `DATETIME2(3)`, **luôn UTC** | 7 byte, chính xác tới ms. **Không dùng `DATETIME`**: 8 byte, độ chính xác 3,33 ms và làm tròn kỳ dị (`.997`/`.000`) — vừa to hơn vừa kém hơn |
+| Thời điểm | `DATETIME2(3)`, **luôn UTC** | 7 byte, chính xác tới ms. **Không dùng `DATETIME`**: 8 byte, độ phân giải 3,33 ms, giá trị bị làm tròn về `.000`/`.003`/`.007` giây — vừa tốn hơn 1 byte vừa kém chính xác hơn |
 | Múi giờ | Không dùng `DATETIMEOFFSET` trong DWH | Đã chuẩn hoá UTC ở tầng cleansed; lưu offset lần nữa là mời gọi dữ liệu lệch múi giờ |
 | Tiền | `DECIMAL(18,2)` | **Không dùng `MONEY`** (phép chia gây sai số làm tròn tích luỹ). **Không dùng `FLOAT`** (kế toán sẽ tìm ra chỗ lệch) |
 | Tỷ lệ / hệ số | `DECIMAL(9,4)` hoặc `DECIMAL(9,6)` | Đủ chính xác cho hệ số phân bổ |
@@ -238,7 +238,7 @@ DROP TABLE dm.fact_sales_line_switchout;
 
 `SWITCH` chạy trong vài giây bất kể phân vùng có bao nhiêu dòng, vì nó chỉ đổi con trỏ metadata. So sánh: `DELETE FROM ... WHERE service_date_key < 20240101` trên 40 triệu dòng sẽ chạy hàng chục phút, làm transaction log tăng mạnh và chặn mọi truy vấn khác.
 
-> 💡 Đây là ví dụ rõ nhất cho thấy **`raw` zone bất biến trên S3 là điều kiện tiên quyết** để `SWITCH` rồi `DROP` mà không lo mất dữ liệu. Hai quyết định thiết kế ở hai tầng khác nhau nhưng phụ thuộc lẫn nhau.
+> Đây là ví dụ rõ nhất cho thấy **`raw` zone bất biến trên S3 là điều kiện tiên quyết** để `SWITCH` rồi `DROP` mà không lo mất dữ liệu. Hai quyết định thiết kế ở hai tầng khác nhau nhưng phụ thuộc lẫn nhau.
 
 ---
 
@@ -294,6 +294,6 @@ không có volumetrics thì mọi quyết định về index, partition và ch�
 
 **3. Bảng lớn nhất của toàn hệ thống là app event (250 triệu dòng/năm ở quy mô 2.000 salon) — và nó không nằm trong DWH.** Nó nằm ở S3/Iceberg, nơi lưu trữ rẻ và tính toán tách rời. Đây chính là lý do kiến trúc **Lake + Warehouse** thay vì chỉ một trong hai: dữ liệu hành vi khối lượng lớn ở Lake, dữ liệu giao dịch cần join nhanh ở Warehouse.
 
-> 💡 **Điểm nghẽn thật sự không phải dung lượng mà là THỜI GIAN NẠP.** Ở quy mô 2.000 salon, mỗi đêm phải nạp ~1,2 triệu dòng fact trong cửa sổ 05:00–06:40. Đó là lý do các quyết định về idempotent, phân vùng và `TRUNCATE PARTITION` quan trọng hơn nhiều so với việc tiết kiệm vài GB.
+> **Điểm nghẽn thật sự không phải dung lượng mà là THỜI GIAN NẠP.** Ở quy mô 2.000 salon, mỗi đêm phải nạp ~1,2 triệu dòng fact trong cửa sổ 05:00–06:40. Đó là lý do các quyết định về idempotent, phân vùng và `TRUNCATE PARTITION` quan trọng hơn nhiều so với việc tiết kiệm vài GB.
 
 ---

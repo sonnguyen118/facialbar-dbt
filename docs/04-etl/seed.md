@@ -166,10 +166,13 @@ Kiểm chứng: `SELECT COUNT(*) FROM dm.dim_time;` phải bằng **1440**.
 5 kênh × 2⁴ cờ = **80 dòng**. Sinh sẵn một lần để ETL chỉ việc tra khoá, không phải `INSERT` khi gặp tổ hợp mới.
 
 ```sql
+-- Thân CTE trên SQL Server bắt buộc là SELECT; `VALUES` chỉ dùng được làm
+-- derived table trong FROM. Viết `WITH x(c) AS (VALUES ...)` sẽ báo Msg 156.
 ;WITH ch(booking_channel) AS (
-    VALUES ('app'), ('web'), ('hotline'), ('walk_in'), ('unknown')
+    SELECT booking_channel
+    FROM   (VALUES ('app'), ('web'), ('hotline'), ('walk_in'), ('unknown')) AS t(booking_channel)
 ), b(v) AS (
-    VALUES (0), (1)
+    SELECT v FROM (VALUES (0), (1)) AS t(v)
 )
 INSERT INTO dm.dim_booking_junk
     (booking_channel, is_first_visit, is_promotion_applied, is_member, is_rescheduled)
@@ -189,7 +192,7 @@ WHERE NOT EXISTS (
 );
 ```
 
-Kiểm chứng: `SELECT COUNT(*) FROM dm.dim_booking_junk;` phải bằng **81** (80 tổ hợp + dòng `-1`).
+Kiểm chứng: `SELECT COUNT(*) FROM dm.dim_booking_junk;` phải bằng **80**: bộ sinh tạo 79 tổ hợp, còn tổ hợp `('unknown',0,0,0,0)` đã là dòng `-1` nên bị `WHERE NOT EXISTS` bỏ qua.
 
 Cách tra khoá trong ETL:
 
@@ -214,6 +217,14 @@ VALUES ('CASH',    N'Tiền mặt',        'cash',    1),
        ('EWALLET', N'Ví điện tử',      'digital', 0),
        ('VOUCHER', N'Voucher',         'voucher', 0),
        ('POINT',   N'Điểm thưởng',     'voucher', 0);
+
+-- Dòng Unknown: quy ước ở 03-dm-dimension.md yêu cầu MỌI dim có sk = -1, và
+-- DQ-SCD-003 mức BLOCK quét toàn bộ dm.dim_*. Thiếu dòng này thì cổng chặn fail.
+SET IDENTITY_INSERT dm.dim_membership_tier ON;
+INSERT INTO dm.dim_membership_tier
+    (membership_tier_sk, tier_code, tier_name, tier_rank, min_spend_amount, discount_pct, point_multiplier)
+VALUES (-1, 'UNKNOWN', N'(Không xác định)', -1, 0, 0.0000, 1.0000);
+SET IDENTITY_INSERT dm.dim_membership_tier OFF;
 
 INSERT INTO dm.dim_membership_tier
     (tier_code, tier_name, tier_rank, min_spend_amount, discount_pct, point_multiplier)

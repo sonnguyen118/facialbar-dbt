@@ -25,7 +25,7 @@ Catalog quy tắc chất lượng: [../05-quality/dq-rules.md](../05-quality/dq-
 | BI | **Superset + Power BI** | Superset cho nội bộ data team; Power BI cho business | Metabase, Tableau |
 | Real-time serving | **Đọc thẳng từ Kafka** | Chỉ cần vài chỉ số vận hành, không cần join phức tạp | ClickHouse/Druid (thêm khi số use case tăng) |
 
-> 💡 **Ghi lại lý do dưới dạng ADR (Architecture Decision Record).** Mỗi quyết định 1 trang: bối cảnh, các phương án, lựa chọn, hệ quả. Sáu tháng sau sẽ có người hỏi *"vì sao lại dùng SQL Server?"* — không có ADR thì câu trả lời chỉ còn là ký ức của người đã rời công ty.
+> **Ghi lại lý do dưới dạng ADR (Architecture Decision Record).** Mỗi quyết định 1 trang: bối cảnh, các phương án, lựa chọn, hệ quả. Sáu tháng sau sẽ có người hỏi *"vì sao lại dùng SQL Server?"* — không có ADR thì câu trả lời chỉ còn là ký ức của người đã rời công ty.
 
 ---
 
@@ -116,7 +116,7 @@ flowchart TD
 | **dm** | Toàn vẹn mô hình chiều | Không có fact trỏ `sk = -1` quá 1%; SCD2 không hở/không chồng khoảng thời gian |
 | **svg_bi** | Đối chiếu tổng | Tổng ở bảng agg = tổng ở fact |
 
-> 💡 **Đối soát (Reconciliation) — kiểm tra giá trị nhất, cần làm riêng mỗi ngày:**
+> **Đối soát (Reconciliation) — kiểm tra giá trị nhất, cần làm riêng mỗi ngày:**
 > ```sql
 > -- So từng salon từng ngày: DWH vs POS
 > SELECT d.salon_id, d.business_date,
@@ -136,7 +136,7 @@ flowchart TD
 
 Trả lời 3 câu hỏi — *Data này là gì? Ai sở hữu? Được sử dụng thế nào?*
 
-| Thành phần | Là gì | Cách làm ở Facial Bar |
+| Thành phần | Định nghĩa | Cách làm ở Facial Bar |
 |---|---|---|
 | **Data Catalog** | Danh mục tra cứu mọi bảng/cột | Mỗi bảng: mô tả, **grain**, owner, SLA, nguồn; mỗi cột: ý nghĩa, đơn vị, miền giá trị |
 | **Data Dictionary** | Định nghĩa chính thức của từng KPI | "Net Revenue = SUM(net_amount) từ `fact_sales_line`, ghi nhận theo ngày dịch vụ" |
@@ -164,7 +164,7 @@ Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và p
 
 **Ba khái niệm cần phân biệt:**
 
-| | Là gì | Ví dụ |
+| | Định nghĩa | Ví dụ |
 |---|---|---|
 | **Monitoring** | Theo dõi các chỉ số **đã biết trước** | "Job có chạy xong không?" |
 | **Observability** | Khả năng **truy vấn để hiểu** vấn đề chưa từng gặp | "Vì sao doanh thu salon Q7 hôm qua bằng 0?" |
@@ -174,9 +174,9 @@ Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và p
 
 | Mức | Ví dụ | Nhận qua | Ai xử lý |
 |---|---|---|---|
-| **P1 – Nghiêm trọng** | Pipeline doanh thu hỏng, DQ chặn | Gọi điện + Slack | DE trực |
+| **P1 – Nghiêm trọng** | Pipeline doanh thu hỏng, DQ chặn | Gọi điện + Slack | Kỹ sư dữ liệu trực |
 | **P2 – Cao** | Trễ SLA, quarantine > 1% | Slack | Chủ sở hữu domain |
-| **P3 – Trung bình** | Rule WARN thất bại | Email hằng ngày | DA |
+| **P3 – Trung bình** | Rule WARN thất bại | Email hằng ngày | Phân tích dữ liệu |
 | **P4 – Thấp** | Bảng không ai dùng | Báo cáo hằng tuần | Data governance |
 
 ---
@@ -202,7 +202,7 @@ Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và p
 | 3 | Fact > 1 tỷ dòng | Chuyển dữ liệu chi tiết cũ về Lake, DWH chỉ giữ 25 tháng gần nhất |
 | 4 | Vẫn không đủ | Chuyển Warehouse sang MPP (Synapse/Snowflake/BigQuery). **Chính vì thế mà logic transform phải viết dưới dạng SQL chuẩn, có version, tránh thủ tục đặc thù riêng của SQL Server** |
 
-> 💡 **Đây là ví dụ điển hình của quyết định kiến trúc tốt:** chọn SQL Server hôm nay là hợp lý (đúng kỹ năng của team, tận dụng license có sẵn), nhưng viết code theo cách **giữ được đường thoát** cho sau này.
+> **Đây là ví dụ điển hình của quyết định kiến trúc tốt:** chọn SQL Server hôm nay là hợp lý — đúng kỹ năng của đội hiện có và tận dụng giấy phép đã mua — nhưng viết mã theo chuẩn phổ thông để chi phí chuyển đổi về sau vẫn thấp.
 
 ### Reliability — Khi hỏng thì xử lý ra sao
 
@@ -218,7 +218,7 @@ Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và p
 
 **Chỉ tiêu cần chốt với business:**
 
-| Chỉ tiêu | Là gì | Mục tiêu đề xuất |
+| Chỉ tiêu | Định nghĩa | Mục tiêu đề xuất |
 |---|---|---|
 | **RPO** (Recovery Point Objective) | Được phép mất tối đa bao nhiêu dữ liệu | ≤ 15 phút (nhờ Kafka retention + raw immutable) |
 | **RTO** (Recovery Time Objective) | Được phép mất bao lâu để phục hồi | ≤ 4 giờ với báo cáo hằng ngày |

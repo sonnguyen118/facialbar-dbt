@@ -24,21 +24,27 @@ AS
 BEGIN
     SET NOCOUNT, XACT_ABORT ON;
 
-    -- Bước 0: dựng bản nguồn, băm CHỈ những cột cần theo dõi lịch sử
+    -- Bước 0: dựng bản nguồn, băm CHỈ những cột cần theo dõi lịch sử.
+    -- `rfm_segment` KHÔNG nằm trong hash: nó là thuộc tính Type 1, bị ghi đè ở
+    -- dag_refresh_svg_bi (mục 4). Nếu đưa vào hash thì mỗi lần phân khúc đổi sẽ
+    -- sinh một phiên bản SCD2 mới — đúng điều mục 4 cam kết không làm.
     SELECT c.customer_id, c.full_name, c.phone_masked, c.gender,
            c.age_group, c.city, c.membership_tier, c.acquisition_channel,
-           c.rfm_segment, c.first_salon_sk,
+           ISNULL(ds.salon_sk, -1) AS first_salon_sk,
            HASHBYTES('SHA2_256',
                CONCAT_WS('|', c.age_group, c.city, c.membership_tier,
-                              c.acquisition_channel, c.rfm_segment)
+                              c.acquisition_channel)
            ) AS row_hash
     INTO   #src
-    FROM   crt.v_customer_for_dim c      -- view đã gộp định danh và ép kiểu
+    FROM       crt.v_customer_for_dim c   -- view chỉ đọc `crt`, không tham chiếu dm/svg_bi
+    LEFT JOIN  dm.dim_salon ds ON ds.salon_id = c.first_salon_id AND ds.is_current = 1
     WHERE  c._is_deleted = 0;
 
     CREATE UNIQUE CLUSTERED INDEX IX_src ON #src (customer_id);
 
-    DECLARE @changed TABLE (customer_id BIGINT PRIMARY KEY);
+    -- Giữ luôn rfm_segment của phiên bản vừa đóng để chuyển tiếp sang phiên bản mới;
+    -- nếu không, mỗi lần đổi thuộc tính Type-2 sẽ xoá mất phân khúc RFM đang có.
+    DECLARE @changed TABLE (customer_id BIGINT PRIMARY KEY, rfm_segment VARCHAR(20) NOT NULL);
     DECLARE @now DATETIME2(3) = SYSUTCDATETIME();
 
     BEGIN TRAN;
@@ -48,7 +54,7 @@ BEGIN
        SET d.valid_to    = @now,
            d.is_current  = 0,
            d._updated_at = @now
-    OUTPUT deleted.customer_id INTO @changed
+    OUTPUT deleted.customer_id, deleted.rfm_segment INTO @changed
     FROM   dm.dim_customer d
     JOIN   #src s ON s.customer_id = d.customer_id
     WHERE  d.is_current = 1
@@ -60,7 +66,7 @@ BEGIN
          membership_tier, acquisition_channel, rfm_segment, first_salon_sk,
          valid_from, valid_to, is_current, row_hash, _run_id)
     SELECT s.customer_id, s.full_name, s.phone_masked, s.gender, s.age_group, s.city,
-           s.membership_tier, s.acquisition_channel, s.rfm_segment, s.first_salon_sk,
+           s.membership_tier, s.acquisition_channel, ch.rfm_segment, s.first_salon_sk,
            @now, '9999-12-31', 1, s.row_hash, @run_id
     FROM   #src s
     JOIN   @changed ch ON ch.customer_id = s.customer_id;
@@ -71,8 +77,12 @@ BEGIN
          membership_tier, acquisition_channel, rfm_segment, first_salon_sk,
          valid_from, valid_to, is_current, row_hash, _run_id)
     SELECT s.customer_id, s.full_name, s.phone_masked, s.gender, s.age_group, s.city,
-           s.membership_tier, s.acquisition_channel, s.rfm_segment, s.first_salon_sk,
-           @now, '9999-12-31', 1, s.row_hash, @run_id
+           s.membership_tier, s.acquisition_channel, 'UNKNOWN', s.first_salon_sk,
+           -- valid_from của phiên bản ĐẦU TIÊN phải là mốc mở, KHÔNG phải giờ nạp.
+           -- Job dim chạy 06:00 ngày N+1 còn hoá đơn phát sinh 09:00 ngày N; để @now
+           -- thì temporal join không khớp phiên bản nào và fact rơi hết về sk = -1 —
+           -- xảy ra với mọi khách/chi nhánh/KTV/dịch vụ mới, và 100% dữ liệu backfill.
+           '1900-01-01', '9999-12-31', 1, s.row_hash, @run_id
     FROM   #src s
     WHERE  NOT EXISTS (SELECT 1 FROM dm.dim_customer d WHERE d.customer_id = s.customer_id);
 
@@ -97,7 +107,7 @@ END
 |---|---|---|
 | 1 | Đóng phiên bản cũ, **ghi lại danh sách bị đóng** qua `OUTPUT` | Không có `OUTPUT` thì bước 2 phải suy đoán "khách nào vừa đổi" — cách phổ biến là so `valid_to` với thời gian, rất dễ sai khi job chạy lại |
 | 2 | Mở phiên bản mới cho **đúng** danh sách đó | Nếu mở cho mọi khách → sinh phiên bản trùng, làm tăng kích thước dim |
-| 3 | Thêm khách mới | Phải chạy **sau** bước 2, nếu không khách vừa đổi sẽ bị coi là mới và bị thêm lần hai |
+| 3 | Thêm khách mới | `NOT EXISTS` quét toàn bảng nên không phụ thuộc thứ tự với bước 2; đặt sau bước 2 để mọi dòng vừa chèn đều được bước 4 cập nhật trong cùng giao dịch |
 | 4 | Ghi đè Type-1 | Phải chạy **sau cùng**, để phiên bản mới ở bước 2 cũng được cập nhật |
 
 Thủ tục này **idempotent**: chạy lại với cùng dữ liệu nguồn thì bước 1 không tìm thấy chênh lệch hash → không làm gì cả.
@@ -130,10 +140,14 @@ Không có hai rule này thì lỗi SCD2 sẽ âm thầm làm **nhân đôi dòn
 Mẫu delete-insert theo phân vùng, kèm temporal join — xem [mục 4.2](load-fact.md#2-transaction-fact--fact_sales_line). Bổ sung một chi tiết vật lý ở đây:
 
 ```sql
--- Với bảng đã phân vùng, xoá bằng TRUNCATE PARTITION nhanh hơn DELETE rất nhiều
--- (SQL Server 2016+), và không làm tăng transaction log
-TRUNCATE TABLE dm.fact_sales_line
-    WITH (PARTITIONS (@partition_number));
+-- CHỈ dùng khi nạp lại TRỌN một tháng: phân vùng theo tháng, nên truncate một phân
+-- vùng để nạp lại một ngày sẽ xoá cả tháng đó. Nạp lại một ngày thì dùng DELETE
+-- theo date_key như thủ tục nạp fact đang làm.
+-- WITH (PARTITIONS(...)) chỉ nhận hằng số, không nhận biến, nên phải qua dynamic SQL.
+DECLARE @sql NVARCHAR(400) =
+    N'TRUNCATE TABLE dm.fact_sales_line WITH (PARTITIONS ('
+    + CAST(@partition_number AS NVARCHAR(10)) + N'));';
+EXEC sys.sp_executesql @sql;
 ```
 
 ---

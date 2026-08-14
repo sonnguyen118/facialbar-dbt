@@ -68,7 +68,7 @@ CROSS APPLY (SELECT ((DATEPART(WEEKDAY, dt) + @@DATEFIRST - 2) % 7) + 1 AS iso) 
 OPTION (MAXRECURSION 0);
 ```
 
-> 💡 **Hai chi tiết không hiển nhiên trong đoạn trên:**
+> **Hai chi tiết không hiển nhiên trong đoạn trên:**
 >
 > **1. Công thức `((DATEPART(WEEKDAY, dt) + @@DATEFIRST - 2) % 7) + 1`.** `DATEPART(WEEKDAY)` phụ thuộc thiết lập `@@DATEFIRST` của session — cùng một câu SQL chạy ở hai server có thể ra thứ khác nhau. Công thức này triệt tiêu ảnh hưởng đó, luôn cho Thứ Hai = 1.
 >
@@ -108,7 +108,7 @@ CREATE TABLE dm.dim_time (
 );
 ```
 
-> 💡 **Vì sao tách `dim_date` và `dim_time` thành hai bảng thay vì một `dim_datetime`:**
+> **Căn cứ — tách `dim_date` và `dim_time` thành hai bảng thay vì một `dim_datetime`:**
 > Một dimension datetime ở mức phút cho 10 năm sẽ có `4.018 × 1.440 = 5,79 triệu` dòng — mất hết ưu điểm "dimension nhỏ, join nhanh". Tách ra thì tổng chỉ còn `4.018 + 1.440 = 5.458` dòng. Đây là mẫu thiết kế chuẩn, không phải tối ưu hoá non.
 
 ## 3. `dim_customer` — SCD Type 2 kết hợp Type 1
@@ -249,7 +249,7 @@ CREATE TABLE dm.dim_service (
 CREATE UNIQUE INDEX UX_dim_service_current ON dm.dim_service (service_id) WHERE is_current = 1;
 ```
 
-> 💡 **Vì sao `dim_service` cần SCD2 dù giá đã có trong fact:** công ty tái cấu trúc danh mục, chuyển *Hydrafacial* từ nhóm `Standard` sang `Premium`. Nếu ghi đè (Type 1), toàn bộ doanh thu quá khứ của dịch vụ đó bị dồn sang `Premium` → báo cáo "cơ cấu doanh thu theo phân khúc giá" của các năm trước **tự thay đổi**, và không ai hiểu vì sao con số tháng trước khác con số đã in ra.
+> **Căn cứ — `dim_service` cần SCD2 dù giá đã có trong fact:** công ty tái cấu trúc danh mục, chuyển *Hydrafacial* từ nhóm `Standard` sang `Premium`. Nếu ghi đè (Type 1), toàn bộ doanh thu quá khứ của dịch vụ đó bị dồn sang `Premium` → báo cáo "cơ cấu doanh thu theo phân khúc giá" của các năm trước **tự thay đổi**, và không ai hiểu vì sao con số tháng trước khác con số đã in ra.
 
 ## 5. Các dimension SCD Type 1 (nhỏ, không cần lịch sử)
 

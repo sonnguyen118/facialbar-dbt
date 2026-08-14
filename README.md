@@ -7,10 +7,13 @@ Tài liệu tổng thiết kế cho hệ thống phân tích dữ liệu chuỗi
 | | |
 |---|---|
 | **Phạm vi** | Cơ sở dữ liệu phân tích, hồ dữ liệu, đường ống nạp, kiểm soát chất lượng, bộ báo cáo |
-| **Quy mô hiện tại** | 20 salon · thiết kế kiểm chứng đến 2.000 salon |
+| **Quy mô hiện tại** | 20 chi nhánh · thiết kế kiểm chứng đến 2.000 chi nhánh |
 | **Nền tảng** | Amazon S3 + Apache Iceberg (hồ dữ liệu) · SQL Server (kho phân tích) · Airflow (điều phối) |
-| **Khối lượng thiết kế** | 79 bảng · 8 quy trình nạp · 56 quy tắc chất lượng · 24 chỉ tiêu · 8 bộ báo cáo |
-| **Thời gian triển khai** | 16 tuần · ~15,4 người-tháng |
+| **Khối lượng thiết kế** | 92 bảng · 2 view · 8 quy trình nạp · 56 quy tắc chất lượng · 24 chỉ tiêu · 8 bộ báo cáo |
+| **Thời gian triển khai** | 18 tuần (9 giai đoạn × 2 tuần) · 16,95 người-tháng |
+
+
+> **Quy ước thuật ngữ.** Thuật ngữ nghiệp vụ dùng trong toàn bộ văn bản là **chi nhánh**; tên bảng và tên cột giữ nguyên `salon` (`dim_salon`, `salon_sk`) theo quy ước đặt tên đối tượng bằng tiếng Anh. Tương tự: **hồ dữ liệu** trong văn bản, `raw`/`cleansed`/`archive` khi chỉ phân vùng; **kho phân tích** trong văn bản, `dm` khi chỉ schema.
 
 ---
 
@@ -76,18 +79,18 @@ SQL Server:  lnd → crt → [cổng chất lượng] → dm → svg_bi
 Superset · Power BI          Bảng thời gian thực (đọc thẳng từ Kafka)
 ```
 
-### Vì sao tách hai tầng lưu trữ
+### Căn cứ tách hai tầng lưu trữ
 
 | | S3 + Iceberg | SQL Server |
 |---|---|---|
-| Giỏi | Lưu rẻ, không giới hạn dung lượng, giữ bản gốc bất biến | Truy vấn nhanh có index, transaction, kết nối tự nhiên với Power BI |
-| Chứa | Bản gốc + sự kiện ứng dụng (250 triệu dòng/năm ở quy mô 2.000 salon) | Dữ liệu giao dịch cần join nhanh (~15 GB sau 5 năm) |
+| Thế mạnh | Chi phí lưu thấp, dung lượng không giới hạn, giữ bản gốc bất biến | Truy vấn nhanh có index, transaction, kết nối tự nhiên với Power BI |
+| Chứa | Bản gốc + sự kiện ứng dụng (250 triệu dòng/năm ở quy mô 2.000 chi nhánh) | Dữ liệu giao dịch cần join nhanh (~15 GB sau 5 năm) |
 
 Khối dữ liệu lớn nhất của hệ thống là sự kiện ứng dụng, và nó **không** nằm trong kho. Đây là lý do kiến trúc không dùng một tầng duy nhất.
 
 ---
 
-## 3. KIẾN TRÚC DỮ LIỆU — 79 BẢNG
+## 3. KIẾN TRÚC DỮ LIỆU — 92 BẢNG
 
 | Schema | Bảng | Vai trò | Dạng chuẩn | Ai truy cập |
 |---|---|---|---|---|
@@ -112,7 +115,7 @@ Khối dữ liệu lớn nhất của hệ thống là sự kiện ứng dụng,
 
 Bốn dim theo dõi lịch sử bằng **SCD Type 2**: `dim_customer`, `dim_salon`, `dim_employee`, `dim_service` — để báo cáo quá khứ không tự thay đổi khi dữ liệu hiện tại bị sửa.
 
-**6 bảng tổng hợp:** doanh thu theo ngày × salon · chân dung khách hàng · phễu chuyển đổi · hiệu quả dịch vụ theo tháng · năng suất kỹ thuật viên · giữ chân theo nhóm khách.
+**6 bảng tổng hợp:** doanh thu theo ngày × chi nhánh · chân dung khách hàng · phễu chuyển đổi · hiệu quả dịch vụ theo tháng · năng suất kỹ thuật viên · giữ chân theo nhóm khách.
 
 ---
 
@@ -123,7 +126,7 @@ Bốn dim theo dõi lịch sử bằng **SCD Type 2**: `dim_customer`, `dim_salo
 | Loại | Kiểu | Lý do loại trừ cái khác |
 |---|---|---|
 | Tiền | `DECIMAL(18,2)` | Không `FLOAT` (sai số làm tròn), không `MONEY` (phép chia sai số tích luỹ) |
-| Thời điểm | `DATETIME2(3)`, luôn UTC | Không `DATETIME` (8 byte, độ chính xác 3,33 ms, làm tròn kỳ dị) |
+| Thời điểm | `DATETIME2(3)`, luôn UTC | Không `DATETIME`: độ phân giải 3,33 ms, giá trị bị làm tròn về .000/.003/.007 giây |
 | Khoá ngày | `INT` dạng `20260814` | Đọc được bằng mắt, dùng trực tiếp làm khoá phân vùng |
 | Khoá đại diện | `BIGINT IDENTITY` (dim nhỏ dùng `INT`) | Join số nguyên nhanh nhất |
 | Text tiếng Việt | `NVARCHAR` | `VARCHAR` không lưu được dấu trên collation không phải UTF-8 |
@@ -158,7 +161,7 @@ Vi phạm bất kỳ ràng buộc nào tạo ra sai số **không sinh thông b�
 | # | Ràng buộc | Hệ quả nếu vi phạm | Thực thi bằng |
 |---|---|---|---|
 | 1 | Mỗi bảng khai báo độ hạt bằng một câu, không có chữ "và" | `COUNT(*)` và `SUM()` sai, toàn bộ báo cáo sai | `UNIQUE` trên cột định nghĩa độ hạt |
-| 2 | Quy trình nạp chạy lại ra cùng kết quả | Doanh thu tự cộng dồn theo số lần retry | Xoá-nạp theo phân vùng hoặc `MERGE` |
+| 2 | Quy trình nạp chạy lại ra cùng kết quả | Doanh thu tự cộng dồn theo số lần chạy lại | Xoá-nạp theo phân vùng hoặc `MERGE` |
 | 3 | Không lưu tỷ lệ trong Fact | `AVG` của tỷ lệ lệch nhiều lần khi các nhóm khác quy mô | Rà cột khi duyệt DDL |
 | 4 | Mọi dim có dòng `-1`; khoá ngoại `NOT NULL` | `INNER JOIN` xoá mất dòng Fact, doanh thu hụt không dấu vết | Nạp dòng `-1` trước Fact đầu tiên |
 
@@ -172,17 +175,17 @@ Vi phạm bất kỳ ràng buộc nào tạo ra sai số **không sinh thông b�
 
 | Tiêu chí | Số quy tắc | Ví dụ |
 |---|---|---|
-| Đầy đủ | 6 | Mọi salon đang mở phải có ≥ 1 hoá đơn/ngày |
+| Đầy đủ | 6 | Mọi chi nhánh đang mở phải có ≥ 1 hoá đơn/ngày |
 | Chính xác | 13 | `net_amount = gross − discount`; thời lượng điều trị 5–480 phút |
 | Nhất quán | 6 | Doanh thu khớp POS sai lệch ≤ 0,1% |
 | Duy nhất | 9 | `invoice_line_id` duy nhất toàn cục; kỹ thuật viên không có 2 lịch chồng giờ |
 | Hợp lệ | 9 | Số điện thoại đúng E.164; độ tin cậy gộp định danh < 0,80 phải có người rà |
-| Kịp thời | 6 | Dữ liệu ngày N có trước 06:00 ngày N+1 |
+| Kịp thời | 6 | Dữ liệu ngày N tới `crt` trước 06:00 ngày N+1 (`DQ-FRESH-001`); bảng tổng hợp làm mới xong trước 08:00 (`DQ-FRESH-003`) |
 | Mô hình chiều | 7 | Lịch sử SCD2 liền mạch; đúng 1 phiên bản hiện hành |
 
-**Phân mức:** 44 chặn · 11 cảnh báo · 1 ghi nhận. Cổng chỉ **dừng nhánh** bị lỗi, không dừng toàn hệ thống.
+**Phân mức:** 43 chặn · 12 cảnh báo · 1 ghi nhận. Cổng chỉ **dừng nhánh** bị lỗi, không dừng toàn hệ thống.
 
-**Đối soát tự động hằng ngày:** doanh thu theo ngày × salon giữa kho ↔ POS, và POS ↔ cổng thanh toán. Dùng `FULL OUTER JOIN` là cố ý — bắt được cả trường hợp kho có mà POS không có (nạp trùng) và ngược lại (mất dữ liệu).
+**Đối soát tự động hằng ngày:** doanh thu theo ngày × chi nhánh giữa kho ↔ POS, và POS ↔ cổng thanh toán. Dùng `FULL OUTER JOIN` là cố ý — bắt được cả trường hợp kho có mà POS không có (nạp trùng) và ngược lại (mất dữ liệu).
 
 → [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md)
 
@@ -190,7 +193,7 @@ Vi phạm bất kỳ ràng buộc nào tạo ra sai số **không sinh thông b�
 
 ## 7. QUY MÔ VÀ ĐIỂM NGHẼN
 
-| | 20 salon | 2.000 salon |
+| | 20 chi nhánh | 2.000 chi nhánh |
 |---|---|---|
 | `fact_sales_line` | 421.000 dòng/năm | 42,1 triệu dòng/năm |
 | Toàn bộ `dm` sau 5 năm | ~150 MB | ~15 GB |
@@ -201,7 +204,7 @@ Vi phạm bất kỳ ràng buộc nào tạo ra sai số **không sinh thông b�
 
 Dung lượng không phải điểm nghẽn ở cả hai quy mô — điều này xác nhận lựa chọn SQL Server và quyết định giữ khoá ngoại enforced.
 
-Fact lớn nhất đạt ~210 triệu dòng sau 5 năm ở quy mô 2.000 salon, dưới ngưỡng 1 tỷ dòng. Việc di trú sang kho dữ liệu đám mây **rất có thể không bao giờ cần**; vẫn giữ đường thoát nhưng không đầu tư trước.
+Fact lớn nhất đạt ~210 triệu dòng sau 5 năm ở quy mô 2.000 chi nhánh, dưới ngưỡng 1 tỷ dòng. Việc di trú sang kho dữ liệu đám mây chỉ cần xét lại khi Fact lớn nhất vượt 1 tỷ dòng; theo dự toán, ngưỡng này không đạt tới trong 5 năm ngay cả ở quy mô 2.000 chi nhánh. Thiết kế giữ khả năng chuyển đổi nhưng không đầu tư trước.
 
 Điểm nghẽn thực tế là **thời gian nạp** trong cửa sổ 05:00–06:40.
 
@@ -211,7 +214,7 @@ Fact lớn nhất đạt ~210 triệu dòng sau 5 năm ở quy mô 2.000 salon, 
 
 | Lớp | Chọn | Lý do | Phương án đã loại |
 |---|---|---|---|
-| Điều phối | Airflow | Phụ thuộc phức tạp, nạp bù lịch sử, retry, quan sát được | Dagster — team chưa quen |
+| Điều phối | Airflow | Phụ thuộc phức tạp, nạp bù lịch sử, tự chạy lại, quan sát được | Dagster — đội hiện tại chưa có kinh nghiệm vận hành |
 | Streaming | Kafka + Schema Registry | Cần gần thời gian thực, cần replay, cần kiểm soát cấu trúc | Kinesis — replay khó hơn, khoá vào một nhà cung cấp |
 | CDC | Debezium | Cần bắt cả DELETE và trạng thái trung gian | Batch tăng trưởng — không bắt được DELETE |
 | Hồ dữ liệu | Amazon S3 | Rẻ, không giới hạn, tách lưu trữ khỏi tính toán | HDFS — phải tự quản cluster |
@@ -228,19 +231,19 @@ Fact lớn nhất đạt ~210 triệu dòng sau 5 năm ở quy mô 2.000 salon, 
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Nghiệp vụ: 14 miền, 6 quy trình, 25 sự kiện | Xong |
+| Nghiệp vụ: 14 miền, 6 quy trình, 24 sự kiện | Xong |
 | Mô hình logic: ERD, độ hạt, Bus Matrix, star schema | Xong |
-| Ánh xạ nguồn sang đích ở mức cột | Xong — 15 bảng `crt` |
+| Ánh xạ nguồn sang đích ở mức cột | Xong — 15 mục ánh xạ, phủ 19 trong 25 bảng `crt` |
 | DDL: `lnd` 28, `crt` 25+view, `dm` 24, `svg_bi` 6, `ctl` 8, `qtn` 1+view | Xong |
-| Script khởi tạo: 14 script | Xong |
-| Quy trình nạp: 8 procedure mẫu, đủ khuôn cho 23 bảng | Xong |
+| Script khởi tạo: 16 script | Xong |
+| Quy trình nạp: 8 procedure mẫu, phủ 4 khuôn nạp áp dụng cho 23 bảng còn lại | Xong |
 | Catalog quy tắc chất lượng: 56 quy tắc | Xong |
 | Từ điển chỉ tiêu: 24 chỉ tiêu | Xong — **chưa có chữ ký nghiệp vụ** |
 | Triển khai thực tế | Chưa bắt đầu — xem [lộ trình](docs/09-roadmap/lo-trinh.md) |
 
 ### Hai bảng chưa thiết kế chi tiết
 
-| Bảng | Vì sao | Giai đoạn |
+| Bảng | Căn cứ chưa thiết kế | Giai đoạn |
 |---|---|---|
 | `fact_campaign_send` | Độ hạt phụ thuộc cách nền tảng marketing xuất dữ liệu, chưa kiểm kê xong | 7 |
 | `fact_service_view` | 2,5 triệu dòng/năm và chỉ dùng ở mức tổng hợp — có thể giữ ở Iceberg, không nạp vào SQL Server. Cần đo trước khi quyết | 7 |
@@ -252,7 +255,7 @@ Các chỉ tiêu tương ứng **sẽ không tính được** nếu không đư�
 | Cần | Chặn | Bên cung cấp |
 |---|---|---|
 | Lịch làm việc / phân ca kỹ thuật viên | Năng suất kỹ thuật viên, tỷ lệ lấp buồng | Vận hành |
-| Giờ mở cửa từng salon theo ngày | Tỷ lệ lấp buồng | Vận hành |
+| Giờ mở cửa từng chi nhánh theo ngày | Tỷ lệ lấp buồng | Vận hành |
 | Cách tính giá vốn dịch vụ | Lợi nhuận gộp, giá trị vòng đời khách | Kế toán |
 | Bảng số liệu đối chiếu doanh thu từ POS | `DQ-RECON-001` — tiêu chí nghiệm thu số 1 | Nhà cung cấp POS |
 | Tỷ giá quy đổi điểm thưởng | Giá trị điểm thưởng | CRM |
@@ -280,17 +283,17 @@ Chưa chốt tám nội dung này thì không bắt đầu được giai đoạn
 
 | Thư mục | Nội dung |
 |---|---|
-| [00-business/](docs/00-business/) | Hành trình khách hàng, 14 miền, 6 quy trình, 25 sự kiện |
+| [00-business/](docs/00-business/) | Hành trình khách hàng, 14 miền, 6 quy trình, 24 sự kiện |
 | [01-erd/](docs/01-erd/) | Thực thể và quan hệ · độ hạt và additivity · star schema và SCD · Bus Matrix |
 | [02-mapping/](docs/02-mapping/) | Ánh xạ nguồn sang đích ở mức cột, ánh xạ danh mục, cột tính trong kho |
 | [03-ddl/](docs/03-ddl/) | Khởi tạo và chuẩn kiểu dữ liệu · `lnd` · `crt` · dim · Fact · `svg_bi` · `ctl`/`qtn` |
-| [04-etl/](docs/04-etl/) | 14 script khởi tạo · nạp dim · nạp Fact và bảng tổng hợp |
+| [04-etl/](docs/04-etl/) | 16 script khởi tạo · nạp dim · nạp Fact và bảng tổng hợp |
 | [05-quality/](docs/05-quality/) | 56 quy tắc kèm SQL kiểm tra và kịch bản chạy |
 | [06-platform/](docs/06-platform/) | Nguồn và thu nạp · hồ dữ liệu, nạp và kiểm soát, kho, Airflow |
 | [07-analytics/](docs/07-analytics/) | 24 chỉ tiêu · 8 bộ báo cáo · 6 bài toán dự báo |
 | [08-operations/](docs/08-operations/) | Công nghệ · bảo mật · quản trị · giám sát · mở rộng và phục hồi |
-| [09-roadmap/](docs/09-roadmap/) | 8 giai đoạn, việc phải làm sớm |
-| [99-reference/](docs/99-reference/) | Quy ước đặt tên · thuật ngữ · 3 checklist |
+| [09-roadmap/](docs/09-roadmap/) | 9 giai đoạn (GĐ 0–8), việc phải làm sớm |
+| [99-reference/](docs/99-reference/) | Quy ước đặt tên · thuật ngữ · 4 checklist |
 
 Chỉ mục đầy đủ kèm thứ tự đọc khi triển khai: [docs/README.md](docs/README.md)
 
