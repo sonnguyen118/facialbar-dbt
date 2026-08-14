@@ -151,7 +151,7 @@ HAVING ABS(p.payment_amount - SUM(a.allocated_amount)) > 1;
 
 ```sql
 -- DQ-UNIQ-001: duy nhất toàn cục. Cần vì UNIQUE index trên bảng phân vùng
--- chỉ đảm bảo duy nhất trong cùng service_date_key (xem Flow.md mục 5.4).
+-- chỉ đảm bảo duy nhất trong cùng service_date_key (xem docs/03-ddl/00-init.md mục 4).
 SELECT invoice_line_id, COUNT(*) AS dup_cnt
 FROM   dm.fact_sales_line
 GROUP  BY invoice_line_id

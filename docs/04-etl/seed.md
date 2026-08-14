@@ -88,7 +88,7 @@ VALUES (-1, 'unknown', 0, 0, 0, 0);
 SET IDENTITY_INSERT dm.dim_booking_junk OFF;
 ```
 
-`dim_customer` xem [Flow.md mục 5.5.3](../../Flow.md#553-dim_customer--scd-type-2-kết-hợp-type-1). `dim_date` và `dim_time` dùng khoá tự nhiên nên không cần dòng `-1`; thay vào đó dùng `19000101` và `0`.
+`dim_customer` xem [03-ddl/03-dm-dimension.md](../03-ddl/03-dm-dimension.md). `dim_date` và `dim_time` dùng khoá tự nhiên nên không cần dòng `-1`; thay vào đó dùng `19000101` và `0`.
 
 ### Kiểm chứng bước 1
 
@@ -116,7 +116,7 @@ UNION ALL SELECT 'dim_customer'  WHERE EXISTS (SELECT 1 FROM dm.dim_customer  WH
 
 ## 2. `dim_date`
 
-Script đầy đủ ở [Flow.md mục 5.5.1](../../Flow.md#551-dim_date--dimension-nền-tảng-phải-làm-đầu-tiên). Dải nạp: `2022-01-01` đến `2032-12-31` = 4.018 dòng.
+Script đầy đủ ở [03-ddl/03-dm-dimension.md](../03-ddl/03-dm-dimension.md). Dải nạp: `2022-01-01` đến `2032-12-31` = 4.018 dòng.
 
 Bổ sung dòng Unknown cho ngày không xác định:
 
@@ -306,14 +306,14 @@ WHERE EXISTS (SELECT 1 FROM ctl.vn_holiday h
 ## Kịch bản chạy toàn bộ
 
 ```
-01_create_database_and_schema.sql      -- Flow.md 5.1
-02_create_partition_scheme.sql         -- Flow.md 5.8
+01_create_database_and_schema.sql      -- docs/03-ddl/00-init.md
+02_create_partition_scheme.sql         -- docs/03-ddl/00-init.md mục 5
 03_create_crt.sql                      -- docs/03-ddl/02-crt.md, theo đúng thứ tự tạo bảng
 04_create_lnd.sql                      -- sinh tự động, docs/03-ddl/01-lnd.md
 05_create_ctl_qtn.sql                  -- docs/03-ddl/06-ctl-qtn.md
-06_create_dm_dimension.sql             -- Flow.md 5.5
-07_create_dm_fact.sql                  -- Flow.md 5.6
-08_create_svg_bi.sql                   -- Flow.md 5.7
+06_create_dm_dimension.sql             -- docs/03-ddl/03-dm-dimension.md
+07_create_dm_fact.sql                  -- docs/03-ddl/04-dm-fact.md
+08_create_svg_bi.sql                   -- docs/03-ddl/05-svg-bi.md
 09_seed_unknown_members.sql            -- mục 1 tài liệu này
 10_seed_dim_date.sql                   -- mục 2
 11_seed_dim_time.sql                   -- mục 3

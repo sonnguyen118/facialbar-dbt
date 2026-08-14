@@ -48,7 +48,7 @@ Star schema gồm **13 dimension + 10 fact + 1 bridge + 2 aggregate**, đủ c�
 
 Dimension theo dõi lịch sử bằng **SCD Type 2**: `dim_customer`, `dim_salon`, `dim_employee`, `dim_service`.
 
-DDL đầy đủ ở [Phần 5 của Flow.md](Flow.md#phần-5--thiết-kế-database-vật-lý).
+DDL đầy đủ ở [docs/03-ddl/](docs/03-ddl/).
 
 ## Ba nguyên tắc xuyên suốt
 
@@ -60,13 +60,13 @@ DDL đầy đủ ở [Phần 5 của Flow.md](Flow.md#phần-5--thiết-kế-dat
 
 | Hạng mục | Trạng thái |
 |---|---|
-| Tài liệu thiết kế (Phần 0–9) | ✅ Hoàn thành |
+| Tài liệu thiết kế | ✅ Hoàn thành |
 | DDL cho `dm` / `svg_bi` / `ctl` / `qtn` | ✅ Hoàn thành trong tài liệu |
-| Triển khai dbt | ⏳ Chưa bắt đầu — xem [Roadmap Sprint 1–8](Flow.md#phần-8--roadmap-thực-thi) |
-| `fact_campaign_send`, `fact_service_view` | ⏳ Sprint 7 — xem [ranh giới phạm vi](Flow.md#511-danh-mục-đối-tượng-database) |
+| Triển khai dbt | ⏳ Chưa bắt đầu — xem [Roadmap Sprint 1–8](docs/09-roadmap/lo-trinh.md) |
+| `fact_campaign_send`, `fact_service_view` | ⏳ Sprint 7 — xem [ranh giới phạm vi](docs/README.md) |
 
 ## Tech stack dự kiến
 
 Airflow · Kafka + Schema Registry · Debezium · Kafka Connect · Amazon S3 · Apache Iceberg · Spark/Glue · SQL Server · dbt · Superset / Power BI
 
-Lý do chọn từng công nghệ (kèm phương án đã cân nhắc và loại bỏ) ở [mục 7.1](Flow.md#71-chọn-technology).
+Lý do chọn từng công nghệ (kèm phương án đã cân nhắc và loại bỏ) ở [docs/08-operations/van-hanh.md](docs/08-operations/van-hanh.md#1-lựa-chọn-công-nghệ).

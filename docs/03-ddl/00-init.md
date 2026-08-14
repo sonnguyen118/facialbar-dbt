@@ -246,7 +246,7 @@ DROP TABLE dm.fact_sales_line_switchout;
 
 ## 6. Volumetrics — dự toán số dòng và dung lượng
 
-không có volumetrics thì mọi quyết định về index, partition và chọn DBMS đều là phỏng đoán. Đây cũng là bước kiểm chứng lại lựa chọn công nghệ ở [mục 7.1](../../Flow.md#71-chọn-technology).
+không có volumetrics thì mọi quyết định về index, partition và chọn DBMS đều là phỏng đoán. Đây cũng là bước kiểm chứng lại lựa chọn công nghệ ở [mục 7.1](../08-operations/van-hanh.md#1-lựa-chọn-công-nghệ).
 
 ### Giả định nghiệp vụ
 

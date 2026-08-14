@@ -379,7 +379,7 @@ BEGIN
 END
 ```
 
-> `@churn_days = 90` là **giá trị khởi tạo tạm**, phải thay bằng phân vị 80–90% của khoảng cách giữa hai lượt đến và rà lại mỗi 6 tháng. Câu SQL tính ngưỡng: [Flow.md mục 6.1](../../Flow.md#61-kpi--bắt-đầu-từ-business-không-bắt-đầu-từ-database).
+> `@churn_days = 90` là **giá trị khởi tạo tạm**, phải thay bằng phân vị 80–90% của khoảng cách giữa hai lượt đến và rà lại mỗi 6 tháng. Câu SQL tính ngưỡng: [07-analytics/chi-tieu-va-bao-cao.md](../07-analytics/chi-tieu-va-bao-cao.md#1-từ-điển-chỉ-tiêu).
 
 ---
 

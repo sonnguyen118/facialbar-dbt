@@ -1,88 +1,95 @@
-# Tài liệu thiết kế — Facial Bar Data Platform
+# Đặc tả thiết kế — Facial Bar Data Platform
 
-Chỉ mục điều hướng. Tài liệu luồng tổng thể ở [../Flow.md](../Flow.md); bản trình phê duyệt ở [../Ban-Thiet-Ke-CSDL.md](../Ban-Thiet-Ke-CSDL.md).
+Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê duyệt: [../Ban-Thiet-Ke-CSDL.md](../Ban-Thiet-Ke-CSDL.md)
+
+`Flow.md` chỉ mô tả luồng. Mọi nội dung đi sâu nằm ở đây.
 
 ## Cấu trúc
 
 | Thư mục | Nội dung | Đối tượng đọc |
 |---|---|---|
-| [01-erd/](01-erd/) | ERD nghiệp vụ, star schema, bảng khai báo grain, Bus Matrix | Data Analyst |
-| [02-mapping/](02-mapping/) | Source-to-Target Mapping ở mức cột | Data Engineer, Data Analyst |
-| [03-ddl/](03-ddl/) | DDL đầy đủ theo từng schema | DBA, Data Engineer |
-| [04-etl/](04-etl/) | Quy trình nạp, script seed | Data Engineer |
-| [05-quality/](05-quality/) | Catalog quy tắc kiểm soát chất lượng | Data Analyst, Data Engineer |
+| [00-business/](00-business/) | Hành trình khách hàng, 14 miền nghiệp vụ, 6 quy trình, danh mục sự kiện | Phân tích dữ liệu, Nghiệp vụ |
+| [01-erd/](01-erd/) | Thực thể, quan hệ, độ hạt, star schema, bus matrix | Phân tích dữ liệu |
+| [02-mapping/](02-mapping/) | Ánh xạ nguồn sang đích ở mức cột | Kỹ sư dữ liệu, Phân tích dữ liệu |
+| [03-ddl/](03-ddl/) | DDL 79 bảng theo từng schema | Quản trị cơ sở dữ liệu, Kỹ sư dữ liệu |
+| [04-etl/](04-etl/) | Quy trình nạp, dữ liệu khởi tạo | Kỹ sư dữ liệu |
+| [05-quality/](05-quality/) | 56 quy tắc kiểm soát chất lượng | Phân tích dữ liệu, Kỹ sư dữ liệu |
+| [06-platform/](06-platform/) | Nguồn dữ liệu, thu nạp, hồ dữ liệu, kho, điều phối | Kỹ sư dữ liệu |
+| [07-analytics/](07-analytics/) | Từ điển chỉ tiêu, báo cáo, mô hình dự báo | Phân tích dữ liệu |
+| [08-operations/](08-operations/) | Công nghệ, bảo mật, quản trị, giám sát, mở rộng | Kiến trúc, Vận hành hệ thống |
+| [09-roadmap/](09-roadmap/) | Lộ trình 8 giai đoạn | Quản lý dự án |
+| [99-reference/](99-reference/) | Quy ước đặt tên, thuật ngữ, checklist | Chung |
 
 ## Thứ tự đọc khi bắt đầu triển khai
 
 | # | Tài liệu | Việc |
 |---|---|---|
-| 1 | [../Flow.md](../Flow.md) Phần 0–2 | Hiểu kiến trúc, nghiệp vụ và mô hình logic |
-| 2 | [02-mapping/source-to-target.md](02-mapping/source-to-target.md) | Biết dữ liệu từng cột lấy từ đâu, biến đổi ra sao |
-| 3 | [03-ddl/](03-ddl/) | Dựng database theo đúng thứ tự |
-| 4 | [04-etl/seed.md](04-etl/seed.md) | Nạp dữ liệu khởi tạo **trước** khi chạy pipeline |
-| 5 | [05-quality/dq-rules.md](05-quality/dq-rules.md) | Nạp catalog quy tắc, cấu hình cổng kiểm tra |
+| 1 | [../Flow.md](../Flow.md) | Hiểu toàn bộ luồng trong 15 phút |
+| 2 | [00-business/nghiep-vu.md](00-business/nghiep-vu.md) | Hiểu nghiệp vụ sinh ra dữ liệu |
+| 3 | [01-erd/](01-erd/) | Hiểu mô hình dữ liệu và độ hạt từng bảng |
+| 4 | [02-mapping/source-to-target.md](02-mapping/source-to-target.md) | Biết từng cột lấy từ đâu, biến đổi ra sao |
+| 5 | [03-ddl/00-init.md](03-ddl/00-init.md) → [06-ctl-qtn.md](03-ddl/06-ctl-qtn.md) | Dựng database theo đúng thứ tự |
+| 6 | [04-etl/seed.md](04-etl/seed.md) | Nạp dữ liệu khởi tạo **trước** khi chạy pipeline |
+| 7 | [05-quality/dq-rules.md](05-quality/dq-rules.md) | Nạp catalog quy tắc, cấu hình cổng kiểm tra |
+| 8 | [04-etl/load-dimension.md](04-etl/load-dimension.md) → [load-fact.md](04-etl/load-fact.md) | Viết quy trình nạp |
 
 ## Danh mục tài liệu
 
-### 01-erd
-| File | Nội dung | Trạng thái |
-|---|---|---|
-| `erd-logic.md` | ERD nghiệp vụ, cardinality | ⏳ Đang ở [Flow.md 2.2](../Flow.md#22-relationship--cardinality) |
-| `grain.md` | Bảng khai báo grain toàn bộ bảng | ⏳ Đang ở [Flow.md 2.3](../Flow.md#23-grain--độ-hạt-của-bảng) |
-| `star-schema.md` | Sơ đồ star schema, SCD, dimension đặc biệt | ⏳ Đang ở [Flow.md 2.4](../Flow.md#24-star-schema--mô-hình-chiều) |
-| `bus-matrix.md` | Ma trận fact × dimension | ⏳ Đang ở [Flow.md 2.7](../Flow.md#27-bus-matrix) |
-
-### 02-mapping
-| File | Nội dung | Trạng thái |
-|---|---|---|
-| [source-to-target.md](02-mapping/source-to-target.md) | Mapping mức cột cho 15 bảng `crt`, mapping `crt → dm`, bảng ánh xạ danh mục, cột tính trong kho, phụ thuộc chưa có | ✅ |
-
-### 03-ddl
-| File | Nội dung | Trạng thái |
-|---|---|---|
-| `00-init.md` | Tạo database, schema, chuẩn kiểu dữ liệu, collation, partition scheme | ⏳ Đang ở [Flow.md 5.1–5.2, 5.8](../Flow.md#51-phạm-vi-thiết-kế--cái-gì-ta-thiết-kế-cái-gì-là-cho-sẵn) |
-| [01-lnd.md](03-ddl/01-lnd.md) | 28 bảng landing, script sinh DDL tự động | ✅ |
-| [02-crt.md](03-ddl/02-crt.md) | 25 bảng + 1 view, đầy đủ khoá/FK/CHECK/index, thứ tự tạo | ✅ |
-| `03-dm-dimension.md` | 13 dimension | ⏳ Đang ở [Flow.md 5.5](../Flow.md#55-ddl--dimension) |
-| `04-dm-fact.md` | 10 fact + 1 bridge | ⏳ Đang ở [Flow.md 5.6](../Flow.md#56-ddl--fact) — **còn thiếu FK cho 7 fact** |
-| `05-svg-bi.md` | 6 bảng tổng hợp | ⏳ 2 bảng ở [Flow.md 5.7](../Flow.md#57-ddl--bridge-table-và-aggregate-table), **4 bảng chưa thiết kế** |
-| [06-ctl-qtn.md](03-ddl/06-ctl-qtn.md) | 9 bảng + 1 view điều khiển và cách ly | ✅ |
-
-### 04-etl
-| File | Nội dung | Trạng thái |
-|---|---|---|
-| [seed.md](04-etl/seed.md) | Unknown member 12 dim, `dim_date`, `dim_time` 1.440 dòng, `dim_booking_junk` 80 tổ hợp, danh mục cố định, cấu hình `ctl`, ngày lễ | ✅ |
-| `load-dimension.md` | Quy trình nạp 13 dimension | ⏳ 1/13 ở [Flow.md 5.9](../Flow.md#59-thủ-tục-nạp--scd2-và-fact) |
-| `load-fact.md` | Quy trình nạp 10 fact + accumulating snapshot | ⏳ Mẫu ở [Flow.md 4.2](../Flow.md#42-ingestion--loading-layer--nạp-và-kiểm-soát) |
-
-### 05-quality
-| File | Nội dung | Trạng thái |
-|---|---|---|
-| [dq-rules.md](05-quality/dq-rules.md) | 56 quy tắc (44 BLOCK, 11 WARN, 1 INFO) trên 7 nhóm, kèm SQL kiểm tra | ✅ |
+| File | Nội dung |
+|---|---|
+| [00-business/nghiep-vu.md](00-business/nghiep-vu.md) | Hành trình khách hàng, miền nghiệp vụ, quy trình, sự kiện và thuộc tính bắt buộc |
+| [01-erd/erd-logic.md](01-erd/erd-logic.md) | Thực thể master và transaction, ba loại khoá, ERD, cardinality, xử lý quan hệ nhiều-nhiều |
+| [01-erd/grain.md](01-erd/grain.md) | Khai báo độ hạt toàn bộ bảng, double counting, fan-out, additivity |
+| [01-erd/star-schema.md](01-erd/star-schema.md) | Fact và dim, ba loại Fact, SCD, dim đặc biệt, chuẩn hoá và phi chuẩn hoá |
+| [01-erd/bus-matrix.md](01-erd/bus-matrix.md) | Ma trận Fact × dim, conformed dimension, drilling across |
+| [02-mapping/source-to-target.md](02-mapping/source-to-target.md) | Mapping mức cột 15 bảng `crt`, mapping `crt → dm`, ánh xạ danh mục, cột tính trong kho |
+| [03-ddl/00-init.md](03-ddl/00-init.md) | Tạo database và schema, chuẩn kiểu dữ liệu, collation, chính sách NULL, khoá và ràng buộc, index và phân vùng, dự toán dung lượng |
+| [03-ddl/01-lnd.md](03-ddl/01-lnd.md) | 28 bảng vùng đệm, script sinh DDL tự động |
+| [03-ddl/02-crt.md](03-ddl/02-crt.md) | 25 bảng + 1 view tầng đối soát, thứ tự tạo bảng |
+| [03-ddl/03-dm-dimension.md](03-ddl/03-dm-dimension.md) | 13 dim: `dim_date`, `dim_time`, 4 dim SCD2, 6 dim SCD1, junk dimension |
+| [03-ddl/04-dm-fact.md](03-ddl/04-dm-fact.md) | 10 Fact đủ ba loại + 1 bảng cầu nối |
+| [03-ddl/05-svg-bi.md](03-ddl/05-svg-bi.md) | 6 bảng tổng hợp phục vụ báo cáo |
+| [03-ddl/06-ctl-qtn.md](03-ddl/06-ctl-qtn.md) | 9 bảng + 1 view điều khiển và cách ly |
+| [04-etl/seed.md](04-etl/seed.md) | 14 script khởi tạo, kịch bản chạy toàn bộ |
+| [04-etl/load-dimension.md](04-etl/load-dimension.md) | Nạp 13 dim: khuôn SCD2 bốn bước, khuôn SCD1, thuộc tính phái sinh |
+| [04-etl/load-fact.md](04-etl/load-fact.md) | Nạp 10 Fact, accumulating snapshot, periodic snapshot, 6 bảng tổng hợp |
+| [05-quality/dq-rules.md](05-quality/dq-rules.md) | 56 quy tắc trên 7 nhóm, kèm SQL kiểm tra và kịch bản chạy |
+| [06-platform/nguon-va-thu-nap.md](06-platform/nguon-va-thu-nap.md) | 4 nhóm nguồn, 3 cơ chế thu nạp, Kafka và Schema Registry |
+| [06-platform/ho-du-lieu-va-kho.md](06-platform/ho-du-lieu-va-kho.md) | Phân vùng hồ dữ liệu, Iceberg, nạp và kiểm soát, 4 tầng kho, cổng chất lượng, Airflow |
+| [07-analytics/chi-tieu-va-bao-cao.md](07-analytics/chi-tieu-va-bao-cao.md) | Từ điển chỉ tiêu 4 nhóm, bộ báo cáo, 6 bài toán dự báo |
+| [08-operations/van-hanh.md](08-operations/van-hanh.md) | Lựa chọn công nghệ, bảo mật, chất lượng dữ liệu, quản trị, giám sát, mở rộng và phục hồi |
+| [09-roadmap/lo-trinh.md](09-roadmap/lo-trinh.md) | 8 giai đoạn, việc phải làm sớm, mốc kiểm soát |
+| [99-reference/tra-cuu.md](99-reference/tra-cuu.md) | Quy ước đặt tên, thuật ngữ, 3 checklist, bản đồ nghiệp vụ đến bảng |
 
 ## Tình trạng hoàn thiện
 
 | Hạng mục | Tiến độ |
 |---|---|
-| `lnd` — 28 bảng | ✅ Xong |
-| `crt` — 25 bảng + 1 view | ✅ Xong |
-| `ctl` + `qtn` — 9 bảng + 1 view | ✅ Xong |
-| `dm` — 26 bảng | ⚠️ Có DDL nhưng thiếu FK cho 7 fact |
-| `svg_bi` — 6 bảng | ⚠️ 2/6 |
-| Source-to-Target Mapping | ✅ Xong |
-| Script seed | ✅ Xong |
-| Catalog DQ rule | ✅ Xong |
-| Quy trình nạp | ⚠️ 1/23 |
-| Tách ERD ra file riêng | ⏳ Chưa |
+| `lnd` — 28 bảng | Xong |
+| `crt` — 25 bảng + 1 view | Xong |
+| `dm` — 13 dim + 10 Fact + 1 cầu nối | Xong, đủ khoá ngoại |
+| `svg_bi` — 6 bảng | Xong |
+| `ctl` + `qtn` — 9 bảng + 1 view | Xong |
+| Ánh xạ nguồn sang đích | Xong |
+| Script khởi tạo | Xong |
+| Catalog quy tắc chất lượng — 56 quy tắc | Xong |
+| Quy trình nạp — 8 procedure mẫu, đủ khuôn cho 23 bảng | Xong |
 
-## Phụ thuộc bên ngoài chưa có
+### Hai bảng chưa thiết kế chi tiết
 
-Năm dữ liệu sau chưa có nguồn và sẽ chặn các chỉ số tương ứng:
+| Bảng | Vì sao | Thuộc giai đoạn |
+|---|---|---|
+| `fact_campaign_send` | Độ hạt phụ thuộc cách nền tảng marketing xuất dữ liệu, chưa kiểm kê xong | 7 |
+| `fact_service_view` | Khối lượng lớn (~2,5 triệu dòng/năm) và chỉ dùng ở mức tổng hợp — có thể giữ nguyên ở Iceberg, không nạp vào SQL Server. Cần đo trước khi quyết | 7 |
+
+## Năm dữ liệu chưa có nguồn
+
+Các chỉ số tương ứng sẽ không tính được nếu không được cung cấp:
 
 | Cần | Chặn | Bên cung cấp |
 |---|---|---|
-| Lịch làm việc / phân ca KTV | Therapist Utilization, Bed Occupancy | Vận hành |
-| Giờ mở cửa từng salon theo ngày | Bed Occupancy | Vận hành |
-| Quy tắc tính COGS dịch vụ | Gross Margin, CLV | Kế toán |
+| Lịch làm việc / phân ca kỹ thuật viên | Năng suất kỹ thuật viên, tỷ lệ lấp buồng | Vận hành |
+| Giờ mở cửa từng salon theo ngày | Tỷ lệ lấp buồng | Vận hành |
+| Cách tính giá vốn dịch vụ | Lợi nhuận gộp, giá trị vòng đời khách hàng | Kế toán |
 | Bảng số liệu đối chiếu doanh thu từ POS | `DQ-RECON-001` — tiêu chí nghiệm thu số 1 | Nhà cung cấp POS |
-| Tỷ giá quy đổi điểm thưởng | `point_value_amount` | CRM |
+| Tỷ giá quy đổi điểm thưởng | Giá trị điểm thưởng | CRM |
