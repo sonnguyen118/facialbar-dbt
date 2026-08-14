@@ -1,0 +1,41 @@
+# ===== Biến môi trường & bí mật — TUYỆT ĐỐI không commit =====
+.env
+*.env
+!example.env
+profiles.yml
+!profiles.example.yml
+*.pem
+*.key
+
+# ===== dbt =====
+target/
+dbt_packages/
+dbt_modules/
+logs/
+.user.yml
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ===== Dữ liệu — không đẩy dữ liệu thật lên repo =====
+*.csv
+*.parquet
+*.xlsx
+!docs/**/*.csv
+data/
+seeds/local/
+
+# ===== macOS =====
+.DS_Store
+._*
+
+# ===== Editor =====
+.vscode/
+.idea/
+*.swp
