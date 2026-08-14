@@ -248,8 +248,10 @@ WHERE  source_name = 'pos'
 |---|---|---|---|---|---|
 | `DQ-SCD-001` | Mọi `dm.dim_*` SCD2 | Lịch sử liền mạch — không hở, không chồng khoảng | 0 vi phạm | `BLOCK` | Data |
 | `DQ-SCD-002` | Mọi `dm.dim_*` SCD2 | Mỗi business key có đúng 1 phiên bản `is_current = 1` | 0 vi phạm | `BLOCK` | Data |
-| `DQ-SCD-003` | Mọi `dm.dim_*` | Tồn tại dòng Unknown `sk = -1` | 0 thiếu | `BLOCK` | Data |
+| `DQ-SCD-003` | 10 dim có khoá đại diện | Tồn tại dòng Unknown `sk = -1` | 0 thiếu | `BLOCK` | Data |
+| `DQ-SCD-004` | 3 dim dùng khoá tự nhiên | `dim_date` có `19000101`, `dim_time` có `0`, `dim_membership_tier` có `tier_code = 'UNKNOWN'` | 0 thiếu | `BLOCK` | Data |
 | `DQ-ALLOC-001` | `dm.bridge_sales_promotion` | Tổng `allocation_factor` theo dòng hoá đơn = 1 | 0 vi phạm | `BLOCK` | Data |
+| `DQ-ALLOC-002` | `crt.invoice_line_promotion` | Tổng `discount_amount` theo dòng hoá đơn khớp `invoice_line.discount_amount` | sai lệch ≤ 1 đồng | `BLOCK` | Data |
 | `DQ-DIM-001` | `dm.dim_booking_junk` | Đủ 80 dòng (79 tổ hợp sinh tự động + dòng Unknown `('unknown',0,0,0,0)`) | 0 thiếu | `BLOCK` | Data |
 | `DQ-DIM-002` | `dm.dim_date` | Có đủ ngày cho `business_date` đang nạp | 0 thiếu | `BLOCK` | Data |
 | `DQ-DIM-003` | `dm.dim_time` | Đủ 1.440 dòng | 0 thiếu | `BLOCK` | Data |
@@ -289,8 +291,8 @@ HAVING ABS(SUM(allocation_factor) - 1.0) > 0.000001;
 | Uniqueness | 9 | 9 | 0 | 0 |
 | Validity | 9 | 4 | 5 | 0 |
 | Freshness | 6 | 3 | 2 | 1 |
-| Mô hình chiều | 7 | 7 | 0 | 0 |
-| **Tổng** | **56** | **43** | **12** | **1** |
+| Mô hình chiều | 9 | 9 | 0 | 0 |
+| **Tổng** | **58** | **45** | **12** | **1** |
 
 ## Phụ thuộc chưa có
 

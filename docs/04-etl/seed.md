@@ -218,13 +218,13 @@ VALUES ('CASH',    N'Tiền mặt',        'cash',    1),
        ('VOUCHER', N'Voucher',         'voucher', 0),
        ('POINT',   N'Điểm thưởng',     'voucher', 0);
 
--- Dòng Unknown: quy ước ở 03-dm-dimension.md yêu cầu MỌI dim có sk = -1, và
--- DQ-SCD-003 mức BLOCK quét toàn bộ dm.dim_*. Thiếu dòng này thì cổng chặn fail.
-SET IDENTITY_INSERT dm.dim_membership_tier ON;
+-- dim_membership_tier dùng khoá tự nhiên `tier_code` làm khoá chính, KHÔNG có
+-- khoá đại diện, vì đây là bảng tham chiếu quy tắc cho ETL chứ không phải chiều
+-- phân tích (xem 01-erd/bus-matrix.md). Dòng "không xác định" vì vậy mang mã
+-- 'UNKNOWN' chứ không phải sk = -1, và DQ-SCD-003 nêu bảng này là ngoại lệ.
 INSERT INTO dm.dim_membership_tier
-    (membership_tier_sk, tier_code, tier_name, tier_rank, min_spend_amount, discount_pct, point_multiplier)
-VALUES (-1, 'UNKNOWN', N'(Không xác định)', -1, 0, 0.0000, 1.0000);
-SET IDENTITY_INSERT dm.dim_membership_tier OFF;
+    (tier_code, tier_name, tier_rank, min_spend_amount, discount_pct, point_multiplier)
+VALUES ('UNKNOWN',  N'(Không xác định)',   0,          0, 0.0000, 1.0000);
 
 INSERT INTO dm.dim_membership_tier
     (tier_code, tier_name, tier_rank, min_spend_amount, discount_pct, point_multiplier)

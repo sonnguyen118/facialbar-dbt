@@ -157,12 +157,12 @@ Cơ sở dữ liệu được tổ chức thành **4 lớp**, mỗi lớp có va
 | 3 | Kho phân tích | Mô hình phân tích, **chốt định nghĩa chỉ tiêu** | Bộ phận Dữ liệu, Phân tích |
 | 4 | Lớp phục vụ báo cáo | Bảng tổng hợp sẵn cho báo cáo | Toàn bộ người dùng qua công cụ báo cáo |
 
-**Quy mô:** 92 bảng và 2 view, phân bố như sau.
+**Quy mô:** 94 bảng và 2 view, phân bố như sau.
 
 | Lớp | Số bảng | Đặc tả chi tiết |
 |---|---|---|
-| Vùng đệm | 28 | [docs/03-ddl/01-lnd.md](docs/03-ddl/01-lnd.md) |
-| Vùng làm sạch | 25 bảng + 1 truy vấn dựng sẵn | [docs/03-ddl/02-crt.md](docs/03-ddl/02-crt.md) |
+| Vùng đệm | 29 | [docs/03-ddl/01-lnd.md](docs/03-ddl/01-lnd.md) |
+| Vùng làm sạch | 26 bảng + 1 truy vấn dựng sẵn | [docs/03-ddl/02-crt.md](docs/03-ddl/02-crt.md) |
 | Kho phân tích | 13 bảng danh mục + 8 bảng giao dịch + 1 bảng chốt tháng + 1 bảng chốt tiến trình + 1 bảng phân bổ khuyến mãi | [dimension](docs/03-ddl/03-dm-dimension.md) · [fact](docs/03-ddl/04-dm-fact.md) |
 | Lớp phục vụ báo cáo | 6 | [docs/03-ddl/05-svg-bi.md](docs/03-ddl/05-svg-bi.md) |
 | Điều khiển và cách ly | 9 bảng + 1 truy vấn dựng sẵn | [docs/03-ddl/06-ctl-qtn.md](docs/03-ddl/06-ctl-qtn.md) |
@@ -419,7 +419,7 @@ Mỗi lĩnh vực nghiệp vụ cần **hai người phụ trách**: một bên 
 
 ### 8.1. Bảy nhóm kiểm tra tự động
 
-Hệ thống có **56 quy tắc kiểm tra** được chạy tự động mỗi ngày, phân theo bảy nhóm. Danh mục đầy đủ: [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md).
+Hệ thống có **58 quy tắc kiểm tra** được chạy tự động mỗi ngày, phân theo bảy nhóm. Danh mục đầy đủ: [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md).
 
 | Nhóm | Số quy tắc | Nội dung kiểm tra | Ví dụ |
 |---|---|---|---|
@@ -601,9 +601,9 @@ Kính đề nghị Ban Tổng Giám đốc xem xét và cho ý kiến về ba n�
 | [Flow.md](Flow.md) | Luồng dữ liệu tổng thể: kiến trúc, nghiệp vụ, nguồn dữ liệu, các tầng nền tảng, chỉ tiêu, lộ trình | Bộ phận Dữ liệu, Công nghệ Thông tin |
 | [docs/01-erd/](docs/01-erd/) | Mô hình dữ liệu logic: thực thể, quan hệ, độ hạt, mô hình chiều | Chuyên viên phân tích |
 | [docs/02-mapping/](docs/02-mapping/) | Ánh xạ từng cột từ hệ thống nguồn sang kho dữ liệu | Kỹ sư dữ liệu |
-| [docs/03-ddl/](docs/03-ddl/) | Cấu trúc 92 bảng, khoá, ràng buộc, index, phân vùng | Quản trị cơ sở dữ liệu |
+| [docs/03-ddl/](docs/03-ddl/) | Cấu trúc 94 bảng, khoá, ràng buộc, index, phân vùng | Quản trị cơ sở dữ liệu |
 | [docs/04-etl/](docs/04-etl/) | Quy trình nạp dữ liệu, dữ liệu khởi tạo | Kỹ sư dữ liệu |
-| [docs/05-quality/](docs/05-quality/) | 56 quy tắc kiểm soát chất lượng dữ liệu | Chuyên viên phân tích, Kỹ sư dữ liệu |
+| [docs/05-quality/](docs/05-quality/) | 58 quy tắc kiểm soát chất lượng dữ liệu | Chuyên viên phân tích, Kỹ sư dữ liệu |
 | [Flow.jpg](Flow.jpg) | Sơ đồ kiến trúc kỹ thuật | Bộ phận Dữ liệu |
 | Từ điển chỉ tiêu | Định nghĩa chính thức từng chỉ tiêu — **sẽ ban hành sau khi các nội dung tại mục 6 được phê duyệt** | Toàn công ty |
 

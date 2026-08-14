@@ -159,6 +159,6 @@ Ba cách xử lý, và lý do chọn:
 | Nhồi vào 1 cột | `promotion_ids = '3,7'` | ❌ Phá 1NF, không lọc/join được |
 | **Bridge table + hệ số phân bổ** | Bảng cầu nối riêng, có `allocation_factor` cộng lại bằng 1 | ✅ Giữ nguyên grain fact, phân tích được theo promotion |
 
-→ Chọn cách 3. DDL của `bridge_sales_promotion` nằm ở [mục 5.7](../03-ddl/04-dm-fact.md).
+→ Chọn cách 3. DDL của `bridge_sales_promotion` nằm ở [03-ddl/05-svg-bi.md mục 1](../03-ddl/05-svg-bi.md); bảng nguồn là [`crt.invoice_line_promotion`](../03-ddl/02-crt.md).
 
 ---

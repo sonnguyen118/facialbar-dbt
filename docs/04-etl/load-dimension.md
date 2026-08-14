@@ -6,7 +6,7 @@
 |---|---|---|---|
 | Nền tảng | `dim_date`, `dim_time` | Seed một lần | [seed.md](seed.md) |
 | SCD Type 2 | `dim_customer`, `dim_salon`, `dim_employee`, `dim_service` | 4 bước đóng/mở phiên bản | `usp_load_dim_<tên>` |
-| SCD Type 1 | `dim_product`, `dim_promotion`, `dim_payment_method`, `dim_room`, `dim_campaign` | `MERGE` |  `usp_load_dim_scd1` (dùng chung) |
+| SCD Type 1 | `dim_product`, `dim_promotion`, `dim_payment_method`, `dim_room`, `dim_campaign` | `MERGE` | `usp_load_dim_product` là bản mẫu; 4 dim còn lại dùng cùng khuôn `MERGE`, mỗi dim một thủ tục `usp_load_dim_<tên>` |
 | Tham chiếu | `dim_membership_tier` | Seed một lần | [seed.md](seed.md) |
 | Junk | `dim_booking_junk` | Sinh sẵn toàn bộ tổ hợp | [seed.md](seed.md) |
 
@@ -309,9 +309,9 @@ WHERE  d.is_current = 1 AND d.rfm_segment <> a.rfm_segment;
 Chạy ngay sau `dag_build_datamart`, trước khi nạp fact:
 
 ```sql
-EXEC ctl.usp_run_dq_group @group = 'SCD';   -- DQ-SCD-001, 002, 003
+EXEC ctl.usp_run_dq_group @group = 'SCD', @run_id = @run_id, @business_date = @business_date;
 ```
 
-Ba quy tắc: lịch sử liền mạch, đúng một phiên bản hiện hành, tồn tại dòng Unknown `-1`. Chi tiết: [dq-rules.md mục 7](../05-quality/dq-rules.md#7-quy-tắc-cho-mô-hình-chiều).
+Bốn quy tắc, đều mức `BLOCK`: lịch sử liền mạch (`DQ-SCD-001`), đúng một phiên bản hiện hành (`DQ-SCD-002`), tồn tại dòng Unknown `-1` ở 10 dim có khoá đại diện (`DQ-SCD-003`), và giá trị "không xác định" ở 3 dim dùng khoá tự nhiên (`DQ-SCD-004`). Thủ tục cổng: [ctl.usp_run_dq_group](../03-ddl/06-ctl-qtn.md#thủ-tục-chạy-cổng-chất-lượng--ctlusp_run_dq_group). Chi tiết quy tắc: [dq-rules.md mục 7](../05-quality/dq-rules.md#7-quy-tắc-cho-mô-hình-chiều).
 
 Lỗi SCD2 làm **nhân đôi dòng fact** khi tra khoá theo thời điểm — biểu hiện ra ngoài là doanh thu của vài khách tự tăng gấp đôi, rất khó truy nếu không chạy ba quy tắc này trước khi nạp fact.

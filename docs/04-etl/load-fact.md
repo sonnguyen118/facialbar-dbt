@@ -8,7 +8,7 @@
 | Transaction (nạp lại 7 ngày) | `fact_ad_spend` | Delete-insert 7 phân vùng gần nhất |
 | Accumulating snapshot | `fact_booking_lifecycle` | `MERGE` — **bảng duy nhất được UPDATE** |
 | Periodic snapshot | `fact_customer_monthly_snapshot` | Delete-insert theo `year_month` |
-| Bridge | `bridge_sales_promotion` | Delete-insert theo phân vùng cha |
+| Bridge | `bridge_sales_promotion` | Xoá-nạp theo `service_date_key` |
 
 ---
 
@@ -423,6 +423,65 @@ END
 ```
 
 > `@churn_days = 90` là **giá trị khởi tạo tạm**, phải thay bằng phân vị 80–90% của khoảng cách giữa hai lượt đến và rà lại mỗi 6 tháng. Câu SQL tính ngưỡng: [07-analytics/chi-tieu-va-bao-cao.md](../07-analytics/chi-tieu-va-bao-cao.md#1-từ-điển-chỉ-tiêu).
+
+---
+
+## 4b. Bảng cầu nối — `dm.bridge_sales_promotion`
+
+Bảng này phá quan hệ nhiều-nhiều giữa dòng hoá đơn và khuyến mãi. Nguồn là [`crt.invoice_line_promotion`](../03-ddl/02-crt.md).
+
+```sql
+CREATE OR ALTER PROCEDURE dm.usp_load_bridge_sales_promotion
+    @business_date DATE,
+    @run_id        UNIQUEIDENTIFIER
+AS
+BEGIN
+    SET NOCOUNT, XACT_ABORT ON;
+    DECLARE @date_key INT =
+        YEAR(@business_date)*10000 + MONTH(@business_date)*100 + DAY(@business_date);
+
+    BEGIN TRAN;
+    DELETE FROM dm.bridge_sales_promotion WHERE service_date_key = @date_key;
+
+    -- Hệ số phân bổ tính theo tiền giảm giá của từng khuyến mãi trên dòng đó.
+    -- Nếu POS không tách được tiền theo từng khuyến mãi, chia đều: 1 / số khuyến mãi.
+    -- Cả hai cách đều cho tổng allocation_factor theo invoice_line_id bằng 1,
+    -- là điều DQ-ALLOC-001 mức BLOCK kiểm.
+    WITH src AS (
+        SELECT ilp.invoice_line_id,
+               ilp.promotion_id,
+               ilp.discount_amount,
+               l.discount_amount AS line_discount_amount,
+               COUNT(*) OVER (PARTITION BY ilp.invoice_line_id)      AS promo_cnt,
+               SUM(ilp.discount_amount)
+                   OVER (PARTITION BY ilp.invoice_line_id)           AS promo_amt_sum
+        FROM   crt.invoice_line_promotion ilp
+        JOIN   crt.invoice_line l ON l.invoice_line_id = ilp.invoice_line_id
+        JOIN   crt.invoice      i ON i.invoice_id      = l.invoice_id
+        WHERE  CAST(i.service_at AS DATE) = @business_date
+          AND  i.invoice_status <> 'void'
+          AND  i._is_deleted = 0 AND l._is_deleted = 0 AND ilp._is_deleted = 0
+    )
+    INSERT INTO dm.bridge_sales_promotion
+        (service_date_key, invoice_line_id, promotion_sk,
+         allocation_factor, allocated_discount_amount, _run_id)
+    SELECT @date_key,
+           s.invoice_line_id,
+           ISNULL(p.promotion_sk, -1),
+           CASE WHEN s.promo_amt_sum > 0
+                THEN s.discount_amount / s.promo_amt_sum
+                ELSE 1.0 / s.promo_cnt END,
+           CASE WHEN s.promo_amt_sum > 0
+                THEN s.discount_amount
+                ELSE s.line_discount_amount / s.promo_cnt END,
+           @run_id
+    FROM   src s
+    LEFT JOIN dm.dim_promotion p ON p.promotion_id = s.promotion_id;
+    COMMIT;
+END
+```
+
+> Sau khi nối `fact_sales_line` với bảng này, số dòng bị nhân lên theo số khuyến mãi trên mỗi dòng hoá đơn. Chỉ được dùng `allocated_discount_amount`; dùng `net_amount` sẽ cộng trùng. Ràng buộc này ghi trong [03-ddl/05-svg-bi.md mục 1](../03-ddl/05-svg-bi.md).
 
 ---
 

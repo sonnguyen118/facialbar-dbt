@@ -49,7 +49,7 @@ Mũi tên nét đứt là vòng lặp thật: chỉ tiêu mới có thể đòi 
 | 5 | ERD 22 thực thể, đủ cardinality | Không còn quan hệ nhiều-nhiều chưa phá |
 | 6 | Bảng khai báo độ hạt cho mọi bảng | Mỗi bảng viết được độ hạt bằng một câu, không có chữ "và" |
 | 7 | Bus Matrix | Xác định xong conformed dimension |
-| 8 | Star schema 13 dim + 10 Fact | Trả lời được 10 câu hỏi nghiệp vụ ưu tiên |
+| 8 | Star schema 13 dim + 10 Fact | Trả lời được [10 câu hỏi nghiệp vụ ưu tiên](docs/00-business/nghiep-vu.md#3b-mười-câu-hỏi-nghiệp-vụ-ưu-tiên) |
 | 9 | Từ điển chỉ tiêu | **Có chữ ký nghiệp vụ** cho từng chỉ tiêu |
 | 10 | Đặc tả 8 bộ báo cáo | Người dùng xác nhận trên bản mô phỏng |
 
@@ -271,7 +271,7 @@ Tám bộ báo cáo, mỗi bộ có người dùng và tần suất xác định
 
 **Chuẩn tối thiểu cho mọi báo cáo:** ghi rõ thời điểm cập nhật cuối · ghi rõ định nghĩa chỉ tiêu khớp từ điển · cho phép xuất dữ liệu để người dùng tự kiểm · không quá 7 biểu đồ một trang · luôn có mốc so sánh (cùng kỳ, kỳ trước, hoặc mục tiêu).
 
-Báo cáo thời gian thực phải ghi rõ **"số liệu tạm tính"** — nhánh này chưa khử trùng lặp, chưa đối soát POS, chưa qua 56 quy tắc chất lượng. Số chính thức luôn lấy từ kho phân tích.
+Báo cáo thời gian thực phải ghi rõ **"số liệu tạm tính"** — nhánh này chưa khử trùng lặp, chưa đối soát POS, chưa qua 58 quy tắc chất lượng. Số chính thức luôn lấy từ kho phân tích.
 
 → [docs/07-analytics/chi-tieu-va-bao-cao.md](docs/07-analytics/chi-tieu-va-bao-cao.md#2-báo-cáo-và-phân-tích)
 

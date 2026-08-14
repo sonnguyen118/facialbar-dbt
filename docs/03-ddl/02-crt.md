@@ -255,6 +255,31 @@ CREATE TABLE crt.promotion_service (
 );
 ```
 
+### `crt.invoice_line_promotion`
+
+Bảng trung gian phá quan hệ nhiều-nhiều **dòng hoá đơn × khuyến mãi**: một dòng hoá đơn có thể được áp nhiều khuyến mãi cùng lúc (giảm giá theo hạng thẻ cộng với khuyến mãi mùa), và một khuyến mãi áp cho nhiều dòng. Đây là nguồn duy nhất của [`dm.bridge_sales_promotion`](05-svg-bi.md).
+
+```sql
+CREATE TABLE crt.invoice_line_promotion (
+    invoice_line_id  BIGINT        NOT NULL,
+    promotion_id     BIGINT        NOT NULL,
+    -- Số tiền giảm giá mà POS gán cho đúng cặp này. Nếu POS chỉ trả tổng giảm giá
+    -- trên cả dòng, cột này để NULL và ETL phân bổ theo tỷ lệ discount_pct.
+    discount_amount  DECIMAL(18,2) NULL,
+    _run_id          UNIQUEIDENTIFIER NOT NULL,
+    _loaded_at       DATETIME2(3)  NOT NULL CONSTRAINT DF_crt_ilp_loaded DEFAULT (SYSUTCDATETIME()),
+    _is_deleted      BIT           NOT NULL CONSTRAINT DF_crt_ilp_del DEFAULT (0),
+    CONSTRAINT PK_crt_invoice_line_promotion
+        PRIMARY KEY CLUSTERED (invoice_line_id, promotion_id),
+    CONSTRAINT FK_crt_ilp_line      FOREIGN KEY (invoice_line_id) REFERENCES crt.invoice_line(invoice_line_id),
+    CONSTRAINT FK_crt_ilp_promotion FOREIGN KEY (promotion_id)    REFERENCES crt.promotion(promotion_id)
+);
+```
+
+> `crt.invoice_line.promotion_id` vẫn được giữ, mang **khuyến mãi chính** để truy vấn nhanh không phải join bảng này. Khi một dòng có nhiều khuyến mãi, phân tích đầy đủ phải đi qua `crt.invoice_line_promotion`, và tổng `discount_amount` của bảng này theo `invoice_line_id` phải bằng `invoice_line.discount_amount` — `DQ-ALLOC-002` kiểm điều đó.
+
+---
+
 ### `crt.marketing_campaign`
 
 ```sql
@@ -816,7 +841,7 @@ FK enforced nên phải tạo theo đúng thứ tự sau:
 10. payment  →  payment_allocation
 11. loyalty_transaction                (phụ thuộc payment)
 12. membership_subscription, feedback, ad_spend, campaign_send, service_view
-13. v_customer_for_dim                 (view, tạo sau cùng)
+14. v_customer_for_dim                 (view, tạo sau cùng)
 ```
 
 Thứ tự **xoá** khi dựng lại: đảo ngược danh sách trên.
@@ -850,6 +875,7 @@ Thứ tự **xoá** khi dựng lại: đảo ngược danh sách trên.
 | 23 | `crt.ad_spend` | Transaction | 1 ngày × chiến dịch × nền tảng | ADS |
 | 24 | `crt.campaign_send` | Transaction | 1 lần gửi tới 1 khách | MKT |
 | 25 | `crt.service_view` | Transaction | 1 lần xem trang dịch vụ | APP + GA4 |
-| 26 | `crt.v_customer_for_dim` | View | 1 khách | — |
+| 26 | `crt.invoice_line_promotion` | Trung gian | 1 cặp dòng hoá đơn × khuyến mãi | POS |
+| 27 | `crt.v_customer_for_dim` | View | 1 khách | — |
 
-**Tổng: 25 bảng + 1 view.**
+**Tổng: 26 bảng + 1 view.**

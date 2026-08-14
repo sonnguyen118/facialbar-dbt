@@ -158,10 +158,10 @@ Bảy thành phần: 4 tầng dữ liệu, 1 cổng kiểm tra chất lượng, 
 
 | # | Thành phần | Số bảng | Vai trò | Ai truy cập được |
 |---|---|---|---|---|
-| 5.1 | `lnd`, vùng đệm | 28 | Tiếp nhận từ `cleansed` | Chỉ hệ thống |
-| 5.2 | `crt`, làm sạch nghiệp vụ | 25 + 1 view | **Đối soát với nguồn** | Dữ liệu, Kiểm toán |
-| 5.3 | Cổng kiểm tra chất lượng | 56 quy tắc | Chặn dữ liệu không đạt | — |
-| 5.4 | `qtn`, vùng cách ly | 1 + 1 view | Giữ dòng lỗi chờ xử lý | Dữ liệu, chủ sở hữu miền |
+| 5.1 | `lnd`, vùng đệm | 29 | Tiếp nhận từ `cleansed` | Chỉ hệ thống |
+| 5.2 | `crt`, làm sạch nghiệp vụ | 26 + 1 view | **Đối soát với nguồn** | Dữ liệu, Kiểm toán |
+| 5.3 | Cổng kiểm tra chất lượng | 58 quy tắc | Chặn dữ liệu không đạt | — |
+| 5.4 | `qtn`, vùng cách ly | 1 + 1 view | Giữ dòng lỗi chờ xử lý | Dữ liệu, chủ sở hữu dữ liệu nghiệp vụ |
 | 5.5 | `dm`, kho phân tích | 13 dim + 10 Fact + 1 cầu nối | **Chốt định nghĩa chỉ tiêu** | Dữ liệu, Phân tích |
 | 5.6 | `svg_bi`, phục vụ BI | 6 | Bảng tổng hợp sẵn | Toàn bộ qua công cụ báo cáo |
 | 5.7 | `ctl`, bảng điều khiển | 8 | Trạng thái pipeline | Dữ liệu |
@@ -174,7 +174,7 @@ Không index, ghi đè mỗi lần chạy, mọi cột nghiệp vụ kiểu `NVA
 
 Không giữ lịch sử vì lịch sử đã nằm ở `raw` trên S3.
 
-→ [28 bảng, script sinh DDL tự động](docs/03-ddl/01-lnd.md)
+→ [29 bảng, script sinh DDL tự động](docs/03-ddl/01-lnd.md)
 
 ### 5.2. `crt` — *Đối soát, gộp định danh*
 
@@ -184,21 +184,21 @@ Mô hình 3NF, giữ đúng độ hạt của nguồn, chưa áp quy tắc nghi�
 
 **Việc khó nhất là gộp định danh.** Cùng một khách có 3 mã ở app, POS và GA4. Thứ tự ưu tiên gộp: số điện thoại chuẩn E.164 → email chữ thường → (tên + ngày sinh + chi nhánh) → thủ công. Độ tin cậy dưới 0,80 **không tự động gộp**, đưa vào danh sách chờ người rà — gộp sai hai khách thành một không sinh thông báo lỗi nào, và việc tách lại đòi ghi lại toàn bộ lịch sử SCD2 của khoá bị ảnh hưởng.
 
-→ [25 bảng + 1 view, thứ tự tạo](docs/03-ddl/02-crt.md)
+→ [26 bảng + 1 view, thứ tự tạo](docs/03-ddl/02-crt.md)
 
 ### 5.3. Cổng kiểm tra chất lượng — *Lỗi thì dừng nhánh*
 
-56 quy tắc trên 7 nhóm: đầy đủ (6), chính xác (13), nhất quán (6), duy nhất (9), hợp lệ (9), kịp thời (6), mô hình chiều (7).
+58 quy tắc trên 7 nhóm: đầy đủ (6), chính xác (13), nhất quán (6), duy nhất (9), hợp lệ (9), kịp thời (6), mô hình chiều (9).
 
 | Mức | Số quy tắc | Hành vi | Thông báo |
 |---|---|---|---|
-| Chặn | 43 | Dừng nhánh, dòng lỗi sang `qtn`, không nạp `dm` | P1: gọi điện + Slack |
+| Chặn | 45 | Dừng nhánh, dòng lỗi sang `qtn`, không nạp `dm` | P1: gọi điện + Slack |
 | Cảnh báo | 12 | Vẫn nạp, gắn dấu hiệu trên báo cáo | P2: Slack cho chủ sở hữu dữ liệu nghiệp vụ |
 | Ghi nhận | 1 | Chỉ ghi nhật ký | Email tổng hợp hằng ngày |
 
-**Quyết định:** cổng chỉ dừng **nhánh** bị lỗi. `fact_payment` bị chặn thì `fact_feedback` vẫn nạp bình thường. Dừng cả hệ thống vì một bảng lỗi tạo áp lực vận hành dẫn tới vô hiệu hoá cổng kiểm tra, làm mất toàn bộ tác dụng của 56 quy tắc.
+**Quyết định:** cổng chỉ dừng **nhánh** bị lỗi. `fact_payment` bị chặn thì `fact_feedback` vẫn nạp bình thường. Dừng cả hệ thống vì một bảng lỗi tạo áp lực vận hành dẫn tới vô hiệu hoá cổng kiểm tra, làm mất toàn bộ tác dụng của 58 quy tắc.
 
-→ [56 quy tắc kèm SQL kiểm tra](docs/05-quality/dq-rules.md)
+→ [58 quy tắc kèm SQL kiểm tra](docs/05-quality/dq-rules.md)
 
 ### 5.4. `qtn` — *Dòng lỗi, chờ xử lý*
 
@@ -248,7 +248,7 @@ Thiếu nhóm bảng này thì câu hỏi *"số liệu hôm nay đã đủ chư
 
 Nhánh riêng, không qua hồ dữ liệu và không qua kho. Phục vụ 3 chỉ số vận hành: số khách đang trong chi nhánh, doanh thu tạm tính hôm nay, số booking mới trong 1 giờ.
 
-**Đánh đổi cụ thể:** độ trễ dưới 5 phút theo yêu cầu vận hành, nhưng **chưa khử trùng lặp CDC, chưa đối soát với POS, chưa qua 56 quy tắc chất lượng**. Không dùng cho báo cáo tài chính. Báo cáo phải ghi rõ "số liệu tạm tính"; số chính thức lấy từ kho phân tích `dm` sau 06:40 hôm sau.
+**Đánh đổi cụ thể:** độ trễ dưới 5 phút theo yêu cầu vận hành, nhưng **chưa khử trùng lặp CDC, chưa đối soát với POS, chưa qua 58 quy tắc chất lượng**. Không dùng cho báo cáo tài chính. Báo cáo phải ghi rõ "số liệu tạm tính"; số chính thức lấy từ kho phân tích `dm` sau 06:40 hôm sau.
 
 ---
 
@@ -331,10 +331,10 @@ Ba lỗi sai âm thầm hay gặp: `COUNT(*)` sai độ hạt · `AVG` của m�
 |---|---|
 | 1–2 · Nguồn và thu nạp | [docs/06-platform/nguon-va-thu-nap.md](docs/06-platform/nguon-va-thu-nap.md) |
 | 3–4 · Hồ dữ liệu, nạp và kiểm soát | [docs/06-platform/ho-du-lieu-va-kho.md](docs/06-platform/ho-du-lieu-va-kho.md) |
-| 5 · DDL 92 bảng | [docs/03-ddl/](docs/03-ddl/) |
+| 5 · DDL 94 bảng | [docs/03-ddl/](docs/03-ddl/) |
 | 5 · Ánh xạ nguồn sang đích | [docs/02-mapping/source-to-target.md](docs/02-mapping/source-to-target.md) |
 | 5 · Quy trình nạp và khởi tạo | [docs/04-etl/](docs/04-etl/) |
-| 5.3 · 56 quy tắc chất lượng | [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md) |
+| 5.3 · 58 quy tắc chất lượng | [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md) |
 | 6 · Chỉ tiêu và báo cáo | [docs/07-analytics/chi-tieu-va-bao-cao.md](docs/07-analytics/chi-tieu-va-bao-cao.md) |
 | 7 · Công nghệ, bảo mật, vận hành | [docs/08-operations/van-hanh.md](docs/08-operations/van-hanh.md) |
 | Mô hình dữ liệu logic | [docs/01-erd/](docs/01-erd/) |

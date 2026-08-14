@@ -9,7 +9,7 @@ Tài liệu tổng thiết kế cho hệ thống phân tích dữ liệu chuỗi
 | **Phạm vi** | Cơ sở dữ liệu phân tích, hồ dữ liệu, đường ống nạp, kiểm soát chất lượng, bộ báo cáo |
 | **Quy mô hiện tại** | 20 chi nhánh · thiết kế kiểm chứng đến 2.000 chi nhánh |
 | **Nền tảng** | Amazon S3 + Apache Iceberg (hồ dữ liệu) · SQL Server (kho phân tích) · Airflow (điều phối) |
-| **Khối lượng thiết kế** | 92 bảng · 2 view · 8 quy trình nạp · 56 quy tắc chất lượng · 24 chỉ tiêu · 8 bộ báo cáo |
+| **Khối lượng thiết kế** | 94 bảng · 2 view · 10 quy trình nạp · 58 quy tắc chất lượng · 24 chỉ tiêu · 8 bộ báo cáo |
 | **Thời gian triển khai** | 18 tuần (9 giai đoạn × 2 tuần) · 16,95 người-tháng |
 
 
@@ -90,12 +90,12 @@ Khối dữ liệu lớn nhất của hệ thống là sự kiện ứng dụng,
 
 ---
 
-## 3. KIẾN TRÚC DỮ LIỆU — 92 BẢNG
+## 3. KIẾN TRÚC DỮ LIỆU — 94 BẢNG
 
 | Schema | Bảng | Vai trò | Dạng chuẩn | Ai truy cập |
 |---|---|---|---|---|
-| `lnd` | 28 | Vùng đệm tiếp nhận từ hồ dữ liệu | Không (Heap, `NVARCHAR`) | Chỉ hệ thống |
-| `crt` | 25 + 1 view | **Đối soát với nguồn**, gộp định danh | 3NF | Dữ liệu, Kiểm toán |
+| `lnd` | 29 | Vùng đệm tiếp nhận từ hồ dữ liệu | Không (Heap, `NVARCHAR`) | Chỉ hệ thống |
+| `crt` | 26 + 1 view | **Đối soát với nguồn**, gộp định danh | 3NF | Dữ liệu, Kiểm toán |
 | `dm` | 13 dim + 10 Fact + 1 cầu nối | **Chốt định nghĩa chỉ tiêu**, star schema | Phi chuẩn hoá có kiểm soát | Dữ liệu, Phân tích |
 | `svg_bi` | 6 | Bảng tổng hợp sẵn cho báo cáo | Phi chuẩn hoá | Toàn bộ, qua công cụ báo cáo |
 | `ctl` | 8 | Trạng thái pipeline, từ điển chỉ tiêu | — | Dữ liệu |
@@ -171,7 +171,7 @@ Vi phạm bất kỳ ràng buộc nào tạo ra sai số **không sinh thông b�
 
 ## 6. KIỂM SOÁT CHẤT LƯỢNG
 
-56 quy tắc tự động, chạy trong `dag_dq_gate` lúc 05:40.
+58 quy tắc tự động, chạy trong `dag_dq_gate` lúc 05:40.
 
 | Tiêu chí | Số quy tắc | Ví dụ |
 |---|---|---|
@@ -183,7 +183,7 @@ Vi phạm bất kỳ ràng buộc nào tạo ra sai số **không sinh thông b�
 | Kịp thời | 6 | Dữ liệu ngày N tới `crt` trước 06:00 ngày N+1 (`DQ-FRESH-001`); bảng tổng hợp làm mới xong trước 08:00 (`DQ-FRESH-003`) |
 | Mô hình chiều | 7 | Lịch sử SCD2 liền mạch; đúng 1 phiên bản hiện hành |
 
-**Phân mức:** 43 chặn · 12 cảnh báo · 1 ghi nhận. Cổng chỉ **dừng nhánh** bị lỗi, không dừng toàn hệ thống.
+**Phân mức:** 45 chặn · 12 cảnh báo · 1 ghi nhận. Cổng chỉ **dừng nhánh** bị lỗi, không dừng toàn hệ thống.
 
 **Đối soát tự động hằng ngày:** doanh thu theo ngày × chi nhánh giữa kho ↔ POS, và POS ↔ cổng thanh toán. Dùng `FULL OUTER JOIN` là cố ý — bắt được cả trường hợp kho có mà POS không có (nạp trùng) và ngược lại (mất dữ liệu).
 
@@ -233,11 +233,11 @@ Fact lớn nhất đạt ~210 triệu dòng sau 5 năm ở quy mô 2.000 chi nh�
 |---|---|
 | Nghiệp vụ: 14 miền, 6 quy trình, 24 sự kiện | Xong |
 | Mô hình logic: ERD, độ hạt, Bus Matrix, star schema | Xong |
-| Ánh xạ nguồn sang đích ở mức cột | Xong — 15 mục ánh xạ, phủ 19 trong 25 bảng `crt` |
-| DDL: `lnd` 28, `crt` 25+view, `dm` 24, `svg_bi` 6, `ctl` 8, `qtn` 1+view | Xong |
+| Ánh xạ nguồn sang đích ở mức cột | Xong — 15 mục ánh xạ, phủ 19 trong 26 bảng `crt` |
+| DDL: `lnd` 29, `crt` 26+view, `dm` 24, `svg_bi` 6, `ctl` 8, `qtn` 1+view | Xong |
 | Script khởi tạo: 16 script | Xong |
-| Quy trình nạp: 8 procedure mẫu, phủ 4 khuôn nạp áp dụng cho 23 bảng còn lại | Xong |
-| Catalog quy tắc chất lượng: 56 quy tắc | Xong |
+| Quy trình nạp: 10 procedure mẫu, phủ 4 khuôn nạp áp dụng cho 23 bảng còn lại | Xong |
+| Catalog quy tắc chất lượng: 58 quy tắc | Xong |
 | Từ điển chỉ tiêu: 24 chỉ tiêu | Xong — **chưa có chữ ký nghiệp vụ** |
 | Triển khai thực tế | Chưa bắt đầu — xem [lộ trình](docs/09-roadmap/lo-trinh.md) |
 
@@ -288,7 +288,7 @@ Chưa chốt tám nội dung này thì không bắt đầu được giai đoạn
 | [02-mapping/](docs/02-mapping/) | Ánh xạ nguồn sang đích ở mức cột, ánh xạ danh mục, cột tính trong kho |
 | [03-ddl/](docs/03-ddl/) | Khởi tạo và chuẩn kiểu dữ liệu · `lnd` · `crt` · dim · Fact · `svg_bi` · `ctl`/`qtn` |
 | [04-etl/](docs/04-etl/) | 16 script khởi tạo · nạp dim · nạp Fact và bảng tổng hợp |
-| [05-quality/](docs/05-quality/) | 56 quy tắc kèm SQL kiểm tra và kịch bản chạy |
+| [05-quality/](docs/05-quality/) | 58 quy tắc kèm SQL kiểm tra và kịch bản chạy |
 | [06-platform/](docs/06-platform/) | Nguồn và thu nạp · hồ dữ liệu, nạp và kiểm soát, kho, Airflow |
 | [07-analytics/](docs/07-analytics/) | 24 chỉ tiêu · 8 bộ báo cáo · 6 bài toán dự báo |
 | [08-operations/](docs/08-operations/) | Công nghệ · bảo mật · quản trị · giám sát · mở rộng và phục hồi |

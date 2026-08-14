@@ -94,8 +94,34 @@ Tên bảng theo quy ước `lnd.<nguồn>_<entity>`. Cột nghiệp vụ **gi�
 | 26 | `lnd.mkt_survey` | MKT | `id, customer_id, nps_answer, surveyed_at` | |
 | 27 | `lnd.hr_employee` | HR | `emp_id, code, full_name, position, grade, store_id, hire_date, terminate_date` | |
 | 28 | `lnd.hr_shift` | HR | `id, employee_id, store_id, work_date, shift_start, shift_end` | |
+| 29 | `lnd.pos_revenue_control` | POS | `store_id, service_date, invoice_cnt, gross_amount, discount_amount, net_amount, currency` | Bảng số liệu đối chiếu do POS tự tính |
 
-**Tổng: 28 bảng.**
+**Tổng: 29 bảng.**
+
+### `lnd.pos_revenue_control` — bảng đối chiếu, không sinh tự động
+
+Bảng này không nằm trong nhóm sinh tự động từ schema Iceberg vì nó không phải bản sao một bảng nguồn, mà là **số tổng do chính POS tính ra**. Đây là đầu vào duy nhất của `DQ-RECON-001` — tiêu chí nghiệm thu số 1. Không có nó thì việc đối soát chỉ là so `crt` với `lnd`, tức so dữ liệu với chính nó.
+
+```sql
+CREATE TABLE lnd.pos_revenue_control (
+    -- Cột nghiệp vụ: giữ nguyên tên và kiểu chuỗi như mọi bảng `lnd` khác
+    store_id          NVARCHAR(50),
+    service_date      NVARCHAR(30),
+    invoice_cnt       NVARCHAR(50),
+    gross_amount      NVARCHAR(50),
+    discount_amount   NVARCHAR(50),
+    net_amount        NVARCHAR(50),
+    currency          NVARCHAR(10),
+    -- Cột kỹ thuật
+    _src_file         VARCHAR(1000)    NULL,
+    _src_line_no      BIGINT           NULL,
+    _run_id           UNIQUEIDENTIFIER NOT NULL,
+    _loaded_at        DATETIME2(3)     NOT NULL,
+    _lsn              BIGINT           NULL
+);
+```
+
+> **Trạng thái: chờ nhà cung cấp POS.** Cần yêu cầu POS xuất tệp tổng doanh thu theo ngày × chi nhánh, cùng cách tính doanh thu thuần mà họ dùng. Nếu POS chỉ xuất được doanh thu gộp thì phải thống nhất lại công thức trước khi đối soát, vì so doanh thu gộp của POS với doanh thu thuần của kho sẽ luôn lệch. Đây là điều kiện tiên quyết đã nêu ở [bản trình phê duyệt mục 11](../../Ban-Thiet-Ke-CSDL.md#11-rủi-ro-và-biện-pháp-kiểm-soát).
 
 > `lnd.hr_shift` là nguồn của `available_minutes` — mẫu số của Therapist Utilization và Bed Occupancy. Đây là dữ liệu **chưa có** ở thời điểm viết tài liệu; xem [phụ thuộc bên ngoài](../02-mapping/source-to-target.md#phụ-thuộc-bên-ngoài-chưa-có).
 
@@ -103,7 +129,7 @@ Tên bảng theo quy ước `lnd.<nguồn>_<entity>`. Cột nghiệp vụ **gi�
 
 ## Script sinh DDL
 
-28 bảng có cấu trúc đồng dạng nên viết tay từng bảng là việc lặp không cần thiết và dễ sai sót. DDL được **sinh tự động từ schema Iceberg** của tầng `cleansed`:
+28 bảng còn lại có cấu trúc đồng dạng nên viết tay từng bảng là việc lặp không cần thiết và dễ sai sót. DDL được **sinh tự động từ schema Iceberg** của tầng `cleansed`:
 
 ```python
 # Chạy trong task Airflow: dag_load_dwh → task generate_lnd_ddl

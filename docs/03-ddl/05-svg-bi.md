@@ -14,6 +14,9 @@ Bảng này thuộc schema **`dm`**, không thuộc `svg_bi`. DDL đặt tại �
 
 ```sql
 CREATE TABLE dm.bridge_sales_promotion (
+    -- service_date_key có mặt để xoá-nạp theo ngày chạy được. Không có cột ngày thì
+    -- không có gì để `DELETE ... WHERE` theo, và nạp lại một ngày buộc phải xoá cả bảng.
+    service_date_key          INT          NOT NULL,
     invoice_line_id           BIGINT       NOT NULL,
     promotion_sk              INT          NOT NULL,
     allocation_factor         DECIMAL(9,6) NOT NULL,   -- tổng theo invoice_line_id = 1.000000
@@ -23,8 +26,13 @@ CREATE TABLE dm.bridge_sales_promotion (
     CONSTRAINT CK_bridge_sales_promotion_factor
         CHECK (allocation_factor > 0 AND allocation_factor <= 1),
     CONSTRAINT FK_bridge_sales_promotion_dim_promotion
-        FOREIGN KEY (promotion_sk) REFERENCES dm.dim_promotion(promotion_sk)
+        FOREIGN KEY (promotion_sk) REFERENCES dm.dim_promotion(promotion_sk),
+    CONSTRAINT FK_bridge_sales_promotion_dim_date
+        FOREIGN KEY (service_date_key) REFERENCES dm.dim_date(date_key)
 );
+
+CREATE NONCLUSTERED INDEX IX_bridge_sales_promotion_date
+    ON dm.bridge_sales_promotion (service_date_key);
 ```
 
 DQ rule đi kèm — không có nó thì bridge table vô dụng:

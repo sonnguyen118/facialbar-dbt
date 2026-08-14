@@ -105,6 +105,29 @@ Process cho biết **thứ tự phụ thuộc** giữa các bảng → quyết �
 
 ---
 
+## 3b. Mười câu hỏi nghiệp vụ ưu tiên
+
+Đây là danh sách mà toàn bộ thiết kế phải trả lời được. Nó là sản phẩm đầu ra của GĐ 0 và là điều kiện hoàn thành của bước 8 trong [luồng thiết kế phân tích](../../Flow-DA.md). Mỗi câu hỏi ràng buộc thẳng vào một bảng cụ thể — cột cuối là chỗ để kiểm tra thiết kế có đủ hay không.
+
+**Trạng thái: bản dựng từ 24 chỉ tiêu và 6 quy trình đã chốt ở tài liệu này. Cần các bộ phận nghiệp vụ xếp lại thứ tự ưu tiên và ký xác nhận tại mốc M1 (cuối tuần 4).** Thứ tự dưới đây theo mức độ ảnh hưởng tới doanh thu, không phải theo độ dễ làm.
+
+| # | Câu hỏi | Bộ phận hỏi | Chỉ tiêu trả lời | Bảng phải có | Trạng thái dữ liệu |
+|---|---|---|---|---|---|
+| 1 | Hôm qua mỗi chi nhánh thu về bao nhiêu, và số đó có khớp POS không? | Ban điều hành, Tài chính | Doanh thu thuần, Tiền thực thu | `fact_sales_line`, `fact_payment`, `lnd.pos_revenue_control` | Chờ POS cấp bảng đối chiếu |
+| 2 | Chi nhánh nào đang kém nhất, và kém ở chặng nào trong phễu? | Ban điều hành, Vận hành | Tỷ lệ chốt lịch, Tỷ lệ khách không đến, Tỷ lệ huỷ lịch | `fact_booking_lifecycle`, `agg_funnel_daily` | Đủ, trừ mốc xác nhận |
+| 3 | Trong 100 khách mới tháng này, bao nhiêu người quay lại lần thứ hai, và sau bao lâu? | Chăm sóc khách hàng | Tỷ lệ khách quay lại | `fact_sales_line`, `agg_cohort_retention` | Đủ |
+| 4 | Một đồng quảng cáo trên từng kênh mang về bao nhiêu doanh thu? | Marketing | Doanh thu trên mỗi đồng quảng cáo, Chi phí thu hút khách mới | `fact_ad_spend`, `agg_customer_360` | Đủ, sau khi chốt QĐ-03 về quy gán kênh |
+| 5 | Dịch vụ nào bán chạy nhưng lãi mỏng, dịch vụ nào ngược lại? | Sản phẩm, Tài chính | Lợi nhuận gộp, Tỷ lệ giảm giá | `fact_sales_line`, `agg_service_perf_monthly` | **Chờ Kế toán cấp cách tính giá vốn** |
+| 6 | Kỹ thuật viên nào đang kín lịch, ai đang trống, và buồng có được dùng hết không? | Vận hành | Năng suất kỹ thuật viên, Tỷ lệ lấp buồng | `fact_treatment`, `agg_therapist_utilization_daily`, `lnd.hr_shift` | **Chờ Vận hành cấp lịch phân ca và giờ mở cửa** |
+| 7 | Khách nào đang có nguy cơ không quay lại nữa? | Chăm sóc khách hàng | Tỷ lệ khách rời bỏ | `fact_customer_monthly_snapshot`, `agg_customer_360` | Đủ, ngưỡng 90 ngày còn là tạm |
+| 8 | Khuyến mãi vừa chạy có thật sự tăng doanh thu, hay chỉ chuyển khách sẵn có sang giá thấp? | Marketing, Tài chính | Tỷ lệ giảm giá, Doanh thu thuần theo nhóm khách | `fact_sales_line`, `dm.bridge_sales_promotion` | Đủ, sau khi POS tách được tiền giảm theo từng khuyến mãi |
+| 9 | Khách hài lòng ở mức nào, và điểm thấp tập trung ở chi nhánh hay ở kỹ thuật viên? | Chăm sóc khách hàng, Vận hành | Mức độ hài lòng (CSAT) | `fact_feedback` | Đủ |
+| 10 | Khách hạng cao có thực sự chi nhiều hơn đủ để bù phần giảm giá của hạng đó? | Chăm sóc khách hàng, Tài chính | Giá trị vòng đời khách hàng, Tỷ lệ nâng hạng thẻ | `dim_customer`, `fact_customer_monthly_snapshot` | **Chờ Kế toán cấp cách tính giá vốn** |
+
+**Bốn câu chưa trả lời được ngay** — số 1, 5, 6, 10 — đều vì thiếu dữ liệu từ bên ngoài, không vì thiếu thiết kế. Danh sách bên cung cấp và hạn chót nằm ở [bản trình phê duyệt mục 11](../../Ban-Thiet-Ke-CSDL.md#11-rủi-ro-và-biện-pháp-kiểm-soát).
+
+---
+
 ## 4. Sự kiện nghiệp vụ
 
 Event là một việc đã xảy ra tại một thời điểm xác định, không thể thay đổi được nữa.

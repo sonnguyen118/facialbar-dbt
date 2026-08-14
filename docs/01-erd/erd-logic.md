@@ -145,6 +145,9 @@ erDiagram
     PROMOTION ||--o{ PROMOTION_SERVICE : "áp dụng"
     SERVICE ||--o{ PROMOTION_SERVICE : "được áp"
 
+    INVOICE_LINE ||--o{ INVOICE_LINE_PROMOTION : "được giảm giá bởi"
+    PROMOTION ||--o{ INVOICE_LINE_PROMOTION : "giảm giá cho"
+
     MARKETING_CAMPAIGN ||--o{ CAMPAIGN_SEND : "gửi đi"
     MARKETING_CAMPAIGN ||--o{ AD_SPEND_DAILY : "chi phí"
     TREATMENT ||--o| FEEDBACK : "được đánh giá"

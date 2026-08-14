@@ -126,7 +126,8 @@ CREATE TABLE ctl.dq_result (
     checked_at      DATETIME2(3)   NOT NULL CONSTRAINT DF_ctl_dq_at DEFAULT (SYSUTCDATETIME()),
     CONSTRAINT PK_ctl_dq_result PRIMARY KEY CLUSTERED (dq_result_id),
     CONSTRAINT CK_ctl_dq_dimension CHECK (dimension IN
-        ('Completeness','Accuracy','Consistency','Uniqueness','Validity','Freshness')),
+        ('Completeness','Accuracy','Consistency','Uniqueness','Validity','Freshness',
+         'DimensionalModel')),
     CONSTRAINT CK_ctl_dq_severity CHECK (severity IN ('BLOCK','WARN','INFO')),
     CONSTRAINT CK_ctl_dq_status   CHECK (status   IN ('PASS','FAIL','ERROR')),
     CONSTRAINT FK_ctl_dq_run  FOREIGN KEY (run_id)  REFERENCES ctl.pipeline_run(run_id),
@@ -154,8 +155,12 @@ CREATE TABLE ctl.dq_rule (
     is_active       BIT            NOT NULL CONSTRAINT DF_ctl_rule_active DEFAULT (1),
     updated_at      DATETIME2(3)   NOT NULL CONSTRAINT DF_ctl_rule_upd DEFAULT (SYSUTCDATETIME()),
     CONSTRAINT PK_ctl_dq_rule PRIMARY KEY CLUSTERED (rule_id),
+    -- Phải có đủ 7 nhóm. Thiếu 'DimensionalModel' thì 8 quy tắc DQ-SCD-* và
+    -- DQ-ALLOC-001 không insert được vào catalog, và cổng chất lượng mất nhóm
+    -- thi hành nguyên tắc "báo cáo kỳ cũ in lại phải ra cùng số".
     CONSTRAINT CK_ctl_rule_dimension CHECK (dimension IN
-        ('Completeness','Accuracy','Consistency','Uniqueness','Validity','Freshness')),
+        ('Completeness','Accuracy','Consistency','Uniqueness','Validity','Freshness',
+         'DimensionalModel')),
     CONSTRAINT CK_ctl_rule_severity  CHECK (severity IN ('BLOCK','WARN','INFO'))
 );
 ```
@@ -213,6 +218,95 @@ CREATE TABLE ctl.metric_definition (
 ```
 
 > `approved_by` để trống nghĩa là chỉ tiêu **chưa được nghiệp vụ ký xác nhận** — không được đưa lên báo cáo trình lãnh đạo.
+
+---
+
+## Thủ tục chạy cổng chất lượng — `ctl.usp_run_dq_group`
+
+Thủ tục này là thứ mà mọi tác vụ cổng trong Airflow gọi tới. Nó đọc `check_sql` của từng quy tắc đang bật trong nhóm, chạy, ghi kết quả vào `ctl.dq_result`, và **báo lỗi ra ngoài nếu có quy tắc mức `BLOCK` thất bại** — nhờ đó Airflow đánh tác vụ là thất bại và nhánh phía sau không chạy.
+
+```sql
+CREATE OR ALTER PROCEDURE ctl.usp_run_dq_group
+    @group         VARCHAR(30),          -- 'SCD', 'Completeness', 'Accuracy', ...
+    @run_id        UNIQUEIDENTIFIER,
+    @business_date DATE
+AS
+BEGIN
+    SET NOCOUNT ON;   -- KHÔNG dùng XACT_ABORT: một quy tắc lỗi cú pháp không được
+                      -- làm mất kết quả của các quy tắc đã chạy xong trước đó.
+
+    DECLARE @rule_id VARCHAR(50), @sql NVARCHAR(MAX), @entity VARCHAR(100),
+            @dim VARCHAR(30), @sev VARCHAR(10), @thr DECIMAL(18,4),
+            @failed BIGINT, @status VARCHAR(10), @msg NVARCHAR(1000);
+
+    DECLARE c CURSOR LOCAL FAST_FORWARD FOR
+        SELECT rule_id, check_sql, entity_name, dimension, severity, threshold_value
+        FROM   ctl.dq_rule
+        WHERE  is_active = 1
+          AND (dimension = @group OR rule_id LIKE 'DQ-' + @group + '-%');
+
+    OPEN c;
+    FETCH NEXT FROM c INTO @rule_id, @sql, @entity, @dim, @sev, @thr;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @failed = NULL; SET @msg = NULL;
+
+        BEGIN TRY
+            -- check_sql phải trả về đúng một cột, một dòng: SỐ DÒNG VI PHẠM
+            DECLARE @out TABLE (failed_row_cnt BIGINT);
+            DELETE FROM @out;
+            INSERT INTO @out (failed_row_cnt)
+            EXEC sys.sp_executesql @sql, N'@business_date DATE', @business_date;
+            SELECT @failed = failed_row_cnt FROM @out;
+            SET @status = CASE WHEN @failed <= ISNULL(@thr, 0) THEN 'PASS' ELSE 'FAIL' END;
+        END TRY
+        BEGIN CATCH
+            -- Quy tắc chạy lỗi được ghi là ERROR, không phải PASS. Coi lỗi cú pháp
+            -- là "đạt" chính là cách một cổng chất lượng âm thầm mất tác dụng.
+            SET @status = 'ERROR';
+            SET @failed = -1;
+            SET @msg = LEFT(ERROR_MESSAGE(), 1000);
+        END CATCH
+
+        INSERT INTO ctl.dq_result
+            (run_id, rule_id, entity_name, dimension, severity, business_date,
+             metric_value, threshold_value, failed_row_cnt, status, detail_message)
+        VALUES (@run_id, @rule_id, @entity, @dim, @sev, @business_date,
+                @failed, @thr, ISNULL(@failed, 0), @status, @msg);
+
+        FETCH NEXT FROM c INTO @rule_id, @sql, @entity, @dim, @sev, @thr;
+    END
+
+    CLOSE c; DEALLOCATE c;
+
+    -- Cổng chặn: chỉ quy tắc mức BLOCK mới dừng nhánh. WARN và INFO ghi nhận rồi đi tiếp.
+    -- ERROR cũng chặn, vì không biết dữ liệu đạt hay không thì không được cho đi tiếp.
+    DECLARE @blocked INT = (
+        SELECT COUNT(*) FROM ctl.dq_result
+        WHERE run_id = @run_id AND business_date = @business_date
+          AND severity = 'BLOCK' AND status IN ('FAIL','ERROR'));
+
+    IF @blocked > 0
+    BEGIN
+        DECLARE @err NVARCHAR(400) =
+            N'Cổng chất lượng nhóm ' + @group + N' thất bại: '
+            + CAST(@blocked AS NVARCHAR(10)) + N' quy tắc mức BLOCK không đạt. '
+            + N'Chi tiết trong ctl.dq_result theo run_id.';
+        THROW 50001, @err, 1;
+    END
+END
+```
+
+**Ba quyết định trong thủ tục này:**
+
+| Quyết định | Lý do |
+|---|---|
+| Không dùng `XACT_ABORT ON` | Một quy tắc lỗi cú pháp không được xoá kết quả của các quy tắc đã chạy xong. Người vận hành cần thấy toàn bộ bức tranh, không chỉ quy tắc lỗi đầu tiên |
+| Quy tắc chạy lỗi ghi `ERROR` và **cũng chặn** | Coi lỗi cú pháp là "đạt" là cách một cổng chất lượng âm thầm mất tác dụng mà không ai biết |
+| `THROW` thay vì trả mã lỗi | Airflow nhận biết tác vụ thất bại qua ngoại lệ; trả mã lỗi thì tác vụ vẫn xanh và nhánh sau vẫn chạy |
+
+Ba quy tắc mức `BLOCK` của nhóm `SCD` được gọi ngay sau khi dựng dim: [04-etl/load-dimension.md](../04-etl/load-dimension.md).
 
 ---
 

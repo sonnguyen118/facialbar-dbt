@@ -12,11 +12,23 @@ grain quyết định mọi phép đếm và mọi phép tổng. Sai grain → `
 
 ### Bảng khai báo Grain (bắt buộc có cho mọi bảng)
 
+Cột **Khoá duy nhất** là khoá xác định độ hạt. Với 7 Fact giao dịch, index thực thi trong DDL là `UX_fact_*_grain` gồm **cột phân vùng đứng trước khoá nghiệp vụ** — ví dụ `(service_date_key, invoice_line_id)`. Cột ngày ở đó là yêu cầu của SQL Server để index gióng theo phân vùng và `SWITCH PARTITION` chạy được, không phải một phần của độ hạt.
+
 | Bảng | 1 dòng = | Khoá duy nhất | Đo được gì |
 |---|---|---|---|
 | `dim_customer` | 1 **phiên bản** của 1 khách hàng | customer_id + valid_from | — (dimension) |
 | `dim_salon` | 1 phiên bản của 1 salon | salon_id + valid_from | — |
 | `dim_service` | 1 **phiên bản** của 1 dịch vụ | service_id + valid_from | — |
+| `dim_employee` | 1 phiên bản của 1 nhân viên | employee_id + valid_from | — |
+| `dim_date` | 1 ngày dương lịch | date_key *(khoá tự nhiên)* | — |
+| `dim_time` | 1 phút trong ngày | time_key *(khoá tự nhiên)* | — |
+| `dim_product` | 1 sản phẩm | product_id | — |
+| `dim_promotion` | 1 chương trình khuyến mãi | promotion_id | — |
+| `dim_payment_method` | 1 hình thức thanh toán | payment_method_code | — |
+| `dim_room` | 1 buồng trong 1 chi nhánh | room_id | — |
+| `dim_campaign` | 1 chiến dịch marketing | campaign_id | — |
+| `dim_membership_tier` | 1 hạng thành viên | tier_code *(khoá tự nhiên, không có khoá đại diện)* | — |
+| `dim_booking_junk` | 1 **tổ hợp** của 5 cờ đặt lịch | (booking_channel, is_first_visit, is_promotion_applied, is_member, is_rescheduled) | — |
 | `fact_booking_line` | 1 **dịch vụ được đặt** trong 1 booking | booking_item_id | số dịch vụ đặt, giá trị đặt |
 | `fact_appointment` | 1 **lịch hẹn** | appointment_id | số lịch hẹn, no-show, thời gian chờ |
 | `fact_treatment` | 1 **dịch vụ đã thực hiện** | treatment_id | số lượt làm, phút phục vụ |
@@ -25,6 +37,9 @@ grain quyết định mọi phép đếm và mọi phép tổng. Sai grain → `
 | `fact_loyalty_txn` | 1 lần điểm biến động | loyalty_txn_id | điểm tích, điểm tiêu |
 | `fact_feedback` | 1 phiếu đánh giá | feedback_id | rating, CSAT, NPS (nếu có thu) |
 | `fact_ad_spend` | 1 ngày × chiến dịch × nền tảng | (date_key, campaign_sk, platform) | chi phí, impression, click |
+| `fact_booking_lifecycle` | 1 **booking** — trạng thái mới nhất của cả hành trình | booking_id | số giờ mỗi chặng phễu, cờ đã đạt từng bậc |
+| `fact_customer_monthly_snapshot` | 1 khách × 1 tháng | (year_month, customer_sk) | số dư điểm cuối kỳ, lượt đến trong tháng, doanh thu trong tháng |
+| `dm.bridge_sales_promotion` | 1 **cặp** dòng hoá đơn × khuyến mãi | (invoice_line_id, promotion_sk) | tiền giảm giá đã phân bổ, hệ số phân bổ |
 
 ### Double counting — minh hoạ bằng số
 
