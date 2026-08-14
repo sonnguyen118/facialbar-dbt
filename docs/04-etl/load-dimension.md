@@ -127,7 +127,7 @@ Không có hai rule này thì lỗi SCD2 sẽ âm thầm làm **nhân đôi dòn
 
 ### Nạp fact
 
-Mẫu delete-insert theo phân vùng, kèm temporal join — xem [mục 4.2](#42-ingestion--loading-layer--nạp-và-kiểm-soát). Bổ sung một chi tiết vật lý ở đây:
+Mẫu delete-insert theo phân vùng, kèm temporal join — xem [mục 4.2](load-fact.md#2-transaction-fact--fact_sales_line). Bổ sung một chi tiết vật lý ở đây:
 
 ```sql
 -- Với bảng đã phân vùng, xoá bằng TRUNCATE PARTITION nhanh hơn DELETE rất nhiều

@@ -137,7 +137,7 @@ Tiền tố `_` để phân biệt rõ với cột nghiệp vụ.
 | **B. Không tạo FK, dùng DQ rule** | Nạp nhanh nhất | Mất tài liệu hoá quan hệ trong chính database; phát hiện lỗi **sau khi** đã nạp |
 | **C. FK có tạo nhưng `NOCHECK` trong lúc nạp** | Nhanh khi nạp, vẫn có tài liệu hoá | Bật lại `WITH CHECK` phải quét toàn bảng — với 200 triệu dòng là rất lâu |
 
-**Quyết định cho Facial Bar: chọn A ở quy mô hiện tại (20 salon).** Volumetrics ở [mục 5.10](#510-volumetrics--dự-toán-số-dòng-và-dung-lượng) cho thấy fact lớn nhất chỉ ~421.000 dòng/năm — chi phí kiểm tra FK là không đáng kể so với lợi ích. **Chuyển sang B khi một fact vượt 100 triệu dòng**, và khi đó DQ rule "orphan check" phải được viết trước khi bỏ FK, không phải sau.
+**Quyết định cho Facial Bar: chọn A ở quy mô hiện tại (20 salon).** Volumetrics ở [mục 5.10](#6-volumetrics--dự-toán-số-dòng-và-dung-lượng) cho thấy fact lớn nhất chỉ ~421.000 dòng/năm — chi phí kiểm tra FK là không đáng kể so với lợi ích. **Chuyển sang B khi một fact vượt 100 triệu dòng**, và khi đó DQ rule "orphan check" phải được viết trước khi bỏ FK, không phải sau.
 
 ### Ràng buộc của SQL Server: UNIQUE index trên bảng đã phân vùng
 
@@ -246,7 +246,7 @@ DROP TABLE dm.fact_sales_line_switchout;
 
 ## 6. Volumetrics — dự toán số dòng và dung lượng
 
-không có volumetrics thì mọi quyết định về index, partition và chọn DBMS đều là phỏng đoán. Đây cũng là bước kiểm chứng lại lựa chọn công nghệ ở [mục 7.1](#71-chọn-technology).
+không có volumetrics thì mọi quyết định về index, partition và chọn DBMS đều là phỏng đoán. Đây cũng là bước kiểm chứng lại lựa chọn công nghệ ở [mục 7.1](../../Flow.md#71-chọn-technology).
 
 ### Giả định nghiệp vụ
 

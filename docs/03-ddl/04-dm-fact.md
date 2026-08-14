@@ -89,7 +89,7 @@ CREATE UNIQUE INDEX UX_fact_sales_line_grain
 
 **1. `service_date_key` làm khoá phân vùng, không phải `invoice_date_key`.** Nghiệp vụ ghi nhận doanh thu **theo ngày dịch vụ được thực hiện** (mục 4.3), nên hầu hết truy vấn lọc theo cột này. Phân vùng phải theo cột được lọc nhiều nhất, nếu không thì partition pruning vô dụng.
 
-**2. `net_amount` được lưu vật lý, không dùng computed column.** Có thể khai báo `AS (gross_amount - discount_amount) PERSISTED`, nhưng chọn cách lưu vật lý + `CHECK` + DQ rule vì: (a) khi debug thấy ngay giá trị ETL đã tính; (b) không lệ thuộc cú pháp riêng của SQL Server — nhất quán với đường thoát di trú ở [mục 7.6](#76-scalability--reliability).
+**2. `net_amount` được lưu vật lý, không dùng computed column.** Có thể khai báo `AS (gross_amount - discount_amount) PERSISTED`, nhưng chọn cách lưu vật lý + `CHECK` + DQ rule vì: (a) khi debug thấy ngay giá trị ETL đã tính; (b) không lệ thuộc cú pháp riêng của SQL Server — nhất quán với đường thoát di trú ở [mục 7.6](../../Flow.md#76-scalability--reliability).
 
 **3. Cột `line_count` luôn bằng 1.** Đây là *counting fact*. Cần nói rõ nó **không** giải quyết vấn đề grain: ở mức dòng thì `SUM(line_count)` và `COUNT(*)` cho **kết quả y hệt nhau** — cả hai đều đếm số dòng hoá đơn, không đếm số hoá đơn. Muốn đếm số hoá đơn vẫn phải `COUNT(DISTINCT invoice_no)`.
 
