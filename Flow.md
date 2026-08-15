@@ -18,7 +18,7 @@ Số hoá nguyên trạng [Flow.jpg](Flow.jpg): 19 hộp trong 2 khung nhóm (h�
 flowchart TD
     AF["Airflow điều phối và lịch chạy toàn bộ luồng"]:::orch
 
-    SRC["<b>Nguồn dữ liệu</b><br/>POS, app, Ads, GA4, tổng đài"]:::store
+    SRC["<b>Nguồn dữ liệu</b><br/>POS, app, Ads, GA4, tổng đài"]:::ext
 
     ETL["<b>ETL theo lô</b><br/>Ads, GA4, danh mục"]:::proc
     KFK["<b>Kafka và Schema Registry</b><br/>Event app, CDC từ POS"]:::proc
@@ -43,8 +43,8 @@ flowchart TD
         CTL["<b>Bảng điều khiển</b><br/>run_id, watermark, status"]:::ctlbox
     end
 
-    CONS["<b>Superset, Power BI</b><br/>Chỉ đọc datamart và svg_bi"]:::store
-    RT["<b>Bảng thời gian thực</b><br/>Đọc thẳng từ Kafka"]:::store
+    CONS["<b>Superset, Power BI</b><br/>Chỉ đọc datamart và svg_bi"]:::ext
+    RT["<b>Bảng thời gian thực</b><br/>Đọc thẳng từ Kafka"]:::ext
 
     SRC --> ETL
     SRC --> KFK
@@ -67,9 +67,10 @@ flowchart TD
     classDef gate fill:#78350f,stroke:#fbbf24,color:#fffbeb
     classDef error fill:#7f1d1d,stroke:#f87171,color:#fef2f2
     classDef ctlbox fill:#1f2937,stroke:#9ca3af,color:#f9fafb
+    classDef ext fill:#2c2c2a,stroke:#8a8a86,color:#f4f4f2
 ```
 
-Chú thích màu, nguyên văn trong ảnh: *Tím là bước xử lý, xanh lá là nơi lưu dữ liệu. Nét đứt là nhánh phụ và luồng quay lại.* Ảnh dùng thêm vàng cho cổng kiểm tra chất lượng, đỏ cho vùng lỗi, xám cho thành phần ngoài phạm vi thiết kế kho: nguồn, công cụ báo cáo, bảng điều khiển và khung điều phối.
+Chú thích màu, nguyên văn trong ảnh: *Tím là bước xử lý, xanh lá là nơi lưu dữ liệu. Nét đứt là nhánh phụ và luồng quay lại.* Ảnh dùng thêm vàng cho cổng kiểm tra chất lượng, đỏ cho vùng lỗi, xám cho thành phần ngoài phạm vi thiết kế kho: nguồn, công cụ báo cáo, bảng thời gian thực, bảng điều khiển và khung điều phối.
 
 ---
 
