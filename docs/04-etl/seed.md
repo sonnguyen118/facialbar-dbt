@@ -11,7 +11,7 @@ Bỏ sót bất kỳ script nào ở đây đều gây lỗi nạp hoặc mất 
 | 3 | `dim_time` — 1.440 dòng | Nạp fact đầu tiên |
 | 4 | `dim_booking_junk` — 80 tổ hợp | Nạp fact đầu tiên |
 | 5 | `dim_payment_method`, `dim_membership_tier` — danh mục cố định | Nạp `fact_payment` |
-| 6 | `ctl.watermark`, `ctl.dq_rule`, `ctl.code_mapping` | Lần chạy pipeline đầu tiên |
+| 6 | `ctl.watermark`, `ctl.dq_rule`, `ctl.code_mapping` | Lần chạy đường ống dữ liệu đầu tiên |
 | 7 | `ctl.vn_holiday` + cập nhật cờ lễ/Tết vào `dim_date` | Báo cáo so sánh cùng kỳ |
 
 ---
@@ -240,7 +240,7 @@ VALUES ('None',     N'Chưa là thành viên', 0,          0, 0.0000, 1.0000),
 
 ## 6. Bảng cấu hình `ctl`
 
-`ctl.watermark` và `ctl.dq_rule`: xem [DDL ctl](../03-ddl/06-ctl-qtn.md) và [catalog DQ rule](../05-quality/dq-rules.md).
+`ctl.watermark` và `ctl.dq_rule`: xem [DDL ctl](../03-ddl/06-ctl-qtn.md) và [catalog DQ quy tắc](../05-quality/dq-rules.md).
 
 `ctl.code_mapping` — nạp từ [bảng ánh xạ trong STM](../02-mapping/source-to-target.md#ánh-xạ-danh-mục):
 
@@ -335,4 +335,4 @@ WHERE EXISTS (SELECT 1 FROM ctl.vn_holiday h
 16_create_procedures.sql               -- docs/04-etl/
 ```
 
-Bước 9 đến 15 **không được đảo thứ tự** và phải hoàn tất trước khi chạy pipeline lần đầu.
+Bước 9 đến 15 **không được đảo thứ tự** và phải hoàn tất trước khi chạy đường ống dữ liệu lần đầu.

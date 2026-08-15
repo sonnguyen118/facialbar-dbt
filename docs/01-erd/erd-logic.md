@@ -4,7 +4,7 @@ Mô hình khái niệm và logic: thực thể, khoá, quan hệ, cardinality. C
 
 DDL vật lý tương ứng: [03-ddl/02-crt.md](../03-ddl/02-crt.md) (3NF) và [03-ddl/03-dm-dimension.md](../03-ddl/03-dm-dimension.md) + [04-dm-fact.md](../03-ddl/04-dm-fact.md) (star schema).
 
-## 1. Data Entity
+## 1. thực thể dữ liệu
 
 Entity là một đối tượng nghiệp vụ được biểu diễn thành bảng, có khoá xác định duy nhất.
 
@@ -13,7 +13,7 @@ Entity là một đối tượng nghiệp vụ được biểu diễn thành b�
 | Loại khoá | Định nghĩa | Ví dụ | Dùng ở đâu |
 |---|---|---|---|
 | **Natural Key** (khoá tự nhiên) | Giá trị nghiệp vụ tự nhận diện | Số điện thoại `0901234567` | Nhận diện khách ở tầng nguồn |
-| **Business Key** (khoá nghiệp vụ) | ID do hệ thống nguồn sinh ra | `POS-CUS-00123` | Đối chiếu ngược về nguồn |
+| **Nghiệp vụ Key** (khoá nghiệp vụ) | ID do hệ thống nguồn sinh ra | `POS-CUS-00123` | Đối chiếu ngược về nguồn |
 | **Surrogate Key** (khoá đại diện) | Số nguyên vô nghĩa do DWH tự sinh | `customer_sk = 8471` | Join trong Star schema |
 
 khách đổi số điện thoại → natural key đổi → mọi giao dịch cũ bị mất liên kết. Surrogate key không bao giờ đổi, nên lịch sử được bảo toàn. Ngoài ra join số nguyên nhanh hơn join chuỗi rất nhiều.
@@ -47,9 +47,9 @@ updated_at         DATETIME2    NOT NULL
 | `room` | room_id | salon_id, room_name, room_type |
 | `marketing_campaign` | campaign_id | name, platform, objective, start_date, end_date, budget |
 
-### Transaction Entity — nhóm quan trọng nhất
+### Thực thể giao dịch — nhóm quan trọng nhất
 
-Đây là nhóm thể hiện **business activity**, và cũng là nhóm sinh ra toàn bộ giá trị phân tích.
+Đây là nhóm thể hiện **nghiệp vụ activity**, và cũng là nhóm sinh ra toàn bộ giá trị phân tích.
 
 ```sql
 -- crt.booking : 1 dòng = 1 lần khách đặt lịch (phần HEADER)
@@ -76,7 +76,7 @@ line_amount      DECIMAL(18,2)    -- = quantity * unit_price - discount_amount
 
 > **Khái niệm Header–Line (Đầu–Dòng):** một giao dịch gần như luôn có 2 mức: mức tổng (ai, khi nào, ở đâu) và mức chi tiết (mua cái gì, mấy cái). Tách 2 bảng là chuẩn mực. Gộp lại sẽ khiến dữ liệu khách hàng bị lặp lại theo số dòng dịch vụ → nguồn gốc của double counting.
 
-| Entity | Khoá chính | Grain (1 dòng = ?) | Ghi chú |
+| Entity | Khoá chính | độ hạt (1 dòng = ?) | Ghi chú |
 |---|---|---|---|
 | `booking` | booking_id | 1 lần đặt lịch | Header |
 | `booking_item` | booking_item_id | 1 dịch vụ trong 1 booking | Line |
@@ -84,18 +84,18 @@ line_amount      DECIMAL(18,2)    -- = quantity * unit_price - discount_amount
 | `treatment` | treatment_id | 1 dịch vụ **đã thực hiện** bởi 1 KTV | Nơi sinh doanh thu dịch vụ |
 | `treatment_product_usage` | usage_id | 1 sản phẩm dùng trong 1 treatment | Tính COGS |
 | `invoice` | invoice_id | 1 hoá đơn | Header |
-| `invoice_line` | invoice_line_id | 1 dòng hoá đơn (dịch vụ hoặc sản phẩm) | **Grain doanh thu chuẩn** |
+| `invoice_line` | invoice_line_id | 1 dòng hoá đơn (dịch vụ hoặc sản phẩm) | **độ hạt doanh thu chuẩn** |
 | `payment` | payment_id | 1 lần chuyển tiền | 1 hoá đơn có thể trả nhiều lần |
 | `payment_allocation` | alloc_id | 1 phần tiền phân bổ cho 1 hoá đơn | Giải bài toán trả góp / trả nhiều thẻ |
 | `loyalty_transaction` | loyalty_txn_id | 1 lần điểm biến động (+/−) | Sổ kế toán điểm |
 | `membership_subscription` | subscription_id | 1 kỳ thành viên của 1 khách | Có valid_from/valid_to |
 | `feedback` | feedback_id | 1 phiếu đánh giá | Gắn với treatment hoặc appointment |
-| `campaign_send` | send_id | 1 lần gửi tới 1 khách | Grain: campaign × customer × lần gửi |
+| `campaign_send` | send_id | 1 lần gửi tới 1 khách | độ hạt: campaign × customer × lần gửi |
 | `ad_spend_daily` | (date, campaign_id, platform) | 1 ngày × 1 chiến dịch × 1 nền tảng | Từ Ads API |
 
 ---
 
-## 2. Relationship và Cardinality
+## 2. Quan hệ và bản số
 
 Cardinality là số lượng dòng ở bảng A ứng với một dòng ở bảng B.
 

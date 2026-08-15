@@ -11,8 +11,8 @@ Chạy **trước tiên**, trước mọi file DDL khác. Thứ tự đầy đ�
 | Đối tượng database | Ai thiết kế | Ta được làm gì |
 |---|---|---|
 | OLTP booking DB (PostgreSQL) | Team ứng dụng | **Chỉ đọc** qua CDC. Không đổi được schema → phải chịu đựng mọi thứ nguồn gửi sang |
-| POS DB | Nhà cung cấp POS | Chỉ đọc qua export/CDC. **Rủi ro:** nhà cung cấp đổi schema không báo trước → cần DQ rule schema-drift |
-| Kafka topic + Avro schema | **Ta thiết kế**, thống nhất với team app | Phần 3.3 |
+| POS DB | Nhà cung cấp POS | Chỉ đọc qua export/CDC. **Rủi ro:** nhà cung cấp đổi schema không báo trước → cần DQ quy tắc schema-drift |
+| Kafka topic + Avro schema | **Ta thiết kế**, thống nhất với đội app | Phần 3.3 |
 | Iceberg table ở `cleansed` | **Ta thiết kế toàn bộ** | Phần 4.1 |
 | `lnd`, `crt`, `dm`, `svg_bi`, `ctl`, `qtn` | **Ta thiết kế toàn bộ** | **Phần 5 này** |
 
@@ -36,7 +36,7 @@ CREATE SCHEMA qtn;      -- Quarantine: dòng lỗi chờ xử lý
 GO
 ```
 
-`READ_COMMITTED_SNAPSHOT ON` là quyết định nhỏ nhưng quan trọng: không có nó, job nạp lúc 06:00 sẽ **chặn** dashboard của người mở lúc 06:05, và người dùng sẽ báo hệ thống không phản hồi.
+`READ_COMMITTED_SNAPSHOT ON` là quyết định nhỏ nhưng quan trọng: không có nó, job nạp lúc 06:00 sẽ **chặn** báo cáo của người mở lúc 06:05, và người dùng sẽ báo hệ thống không phản hồi.
 
 ---
 
@@ -47,8 +47,8 @@ GO
 | Loại dữ liệu | Kiểu chuẩn | Vì sao chọn / vì sao không chọn cái khác |
 |---|---|---|
 | Surrogate key | `BIGINT IDENTITY(1,1)` (dim nhỏ dùng `INT`) | Join số nguyên nhanh nhất; `INT` đủ cho dim < 2,1 tỷ dòng |
-| Business key (số) | `BIGINT` | — |
-| Business key (chuỗi từ nguồn) | `VARCHAR(50)` | Mã POS/gateway đều ASCII, không cần Unicode |
+| Nghiệp vụ key (số) | `BIGINT` | — |
+| Nghiệp vụ key (chuỗi từ nguồn) | `VARCHAR(50)` | Mã POS/gateway đều ASCII, không cần Unicode |
 | Khoá ngày | `INT` dạng `20260814` | Đọc được bằng mắt, dùng trực tiếp làm partition function. **Đánh đổi:** tốn 4 byte so với `DATE` 3 byte — chấp nhận |
 | Khoá giờ | `SMALLINT` (0–1439 = phút trong ngày) | 2 byte, đủ biểu diễn từng phút |
 | Ngày | `DATE` | 3 byte |
@@ -64,7 +64,7 @@ GO
 | UUID | `UNIQUEIDENTIFIER` | **Không dùng làm clustered key** — giá trị ngẫu nhiên gây phân mảnh trang nghiêm trọng |
 | JSON | `NVARCHAR(MAX)` + `CHECK (ISJSON(col) = 1)` | Chỉ dùng ở `lnd` và `qtn`, không dùng ở `dm` |
 
-### Collation — chi tiết đặc thù tiếng Việt, dễ bị bỏ sót
+### Collation — chi tiết đặc thù tiếng Việt
 
 Chọn `Vietnamese_CI_AI` ở cấp database:
 - **CI** (Case-Insensitive) — không phân biệt hoa/thường.
@@ -98,7 +98,7 @@ Tiền tố `_` để phân biệt rõ với cột nghiệp vụ.
 | `crt` | `_src_system`, `_run_id`, `_loaded_at`, `_updated_at`, `_is_deleted` | `_is_deleted` = xoá mềm, giữ lịch sử khi CDC báo DELETE |
 | `dm.dim_*` | `valid_from`, `valid_to`, `is_current`, `row_hash`, `_run_id`, `_updated_at` | Bộ điều khiển SCD2 |
 | `dm.fact_*` | `_run_id`, `_loaded_at` | Biết dòng này do lần chạy nào nạp → xoá đúng khi nạp lại |
-| `svg_bi.agg_*` | `_run_id`, `_refreshed_at` | Dashboard hiển thị "dữ liệu cập nhật lúc..." |
+| `svg_bi.agg_*` | `_run_id`, `_refreshed_at` | Báo cáo hiển thị "dữ liệu cập nhật lúc..." |
 
 ### Chính sách NULL — quyết định, không phải mặc định
 
@@ -121,11 +121,11 @@ Tiền tố `_` để phân biệt rõ với cột nghiệp vụ.
 | Ràng buộc | `lnd` | `crt` | `dm` | Quyết định & lý do |
 |---|---|---|---|---|
 | **PRIMARY KEY** | ❌ Không | ✅ Có | ✅ Có (trên SK) | `lnd` là heap ghi-đè, PK chỉ làm chậm việc nạp |
-| **UNIQUE trên grain** | ❌ | ✅ | ✅ **Bắt buộc** | Đây là **hàng rào cứng duy nhất** chống double counting do nạp trùng |
+| **UNIQUE trên độ hạt** | ❌ | ✅ | ✅ **Bắt buộc** | Đây là **hàng rào cứng duy nhất** chống double counting do nạp trùng |
 | **FOREIGN KEY** | ❌ | ✅ Enforced | ⚠️ Có điều kiện — xem dưới | |
 | **CHECK** | ❌ | ✅ | ✅ | Chặn dữ liệu vô lý ngay tại database |
 | **DEFAULT** | ❌ | ✅ | ✅ | |
-| **NOT NULL** | ❌ (để rộng) | ✅ | ✅ | `lnd` phải **không bao giờ fail lúc nạp**; sai kiểu để tầng sau bắt với thông báo rõ ràng |
+| **NOT NULL** | ❌ (để rộng) | ✅ | ✅ | `lnd` phải **không bao giờ không đạt lúc nạp**; sai kiểu để tầng sau bắt với thông báo rõ ràng |
 
 ### Quyết định về FOREIGN KEY ở tầng `dm` — có đánh đổi thật
 
@@ -134,10 +134,10 @@ Tiền tố `_` để phân biệt rõ với cột nghiệp vụ.
 | Phương án | Ưu | Nhược |
 |---|---|---|
 | **A. FK enforced đầy đủ** | Database tự đảm bảo không có fact mồ côi; Power BI tự nhận diện quan hệ khi import | Mỗi `INSERT` phải kiểm tra → nạp lô lớn chậm hơn rõ rệt |
-| **B. Không tạo FK, dùng DQ rule** | Nạp nhanh nhất | Mất tài liệu hoá quan hệ trong chính database; phát hiện lỗi **sau khi** đã nạp |
+| **B. Không tạo FK, dùng DQ quy tắc** | Nạp nhanh nhất | Mất tài liệu hoá quan hệ trong chính database; phát hiện lỗi **sau khi** đã nạp |
 | **C. FK có tạo nhưng `NOCHECK` trong lúc nạp** | Nhanh khi nạp, vẫn có tài liệu hoá | Bật lại `WITH CHECK` phải quét toàn bảng — với 200 triệu dòng là rất lâu |
 
-**Quyết định cho Facial Bar: chọn A ở quy mô hiện tại (20 salon).** Volumetrics ở [mục 5.10](#6-volumetrics--dự-toán-số-dòng-và-dung-lượng) cho thấy fact lớn nhất chỉ ~421.000 dòng/năm — chi phí kiểm tra FK là không đáng kể so với lợi ích. **Chuyển sang B khi một fact vượt 100 triệu dòng**, và khi đó DQ rule "orphan check" phải được viết trước khi bỏ FK, không phải sau.
+**Quyết định cho Facial Bar: chọn A ở quy mô hiện tại (20 salon).** Volumetrics ở [mục 5.10](#6-dự-toán-số-dòng-và-dung-lượng) cho thấy fact lớn nhất chỉ ~421.000 dòng/năm — chi phí kiểm tra FK là không đáng kể so với lợi ích. **Chuyển sang B khi một fact vượt 100 triệu dòng**, và khi đó DQ quy tắc "orphan check" phải được viết trước khi bỏ FK, không phải sau.
 
 ### Ràng buộc của SQL Server: UNIQUE index trên bảng đã phân vùng
 
@@ -151,8 +151,8 @@ SQL Server yêu cầu: **index unique trên bảng phân vùng phải chứa c�
 | `UNIQUE (service_date_key, invoice_line_id)` | ✅ Aligned, `SWITCH` được — ⚠️ chỉ đảm bảo duy nhất **trong cùng một ngày** |
 | Không có unique index | ✅ Nạp nhanh nhất — ❌ mất hàng rào chống nạp trùng |
 
-**Quyết định: chọn cách 2, bù bằng DQ rule kiểm tra duy nhất toàn cục.**
-Lý do: một `invoice_line_id` về bản chất chỉ thuộc **một** `service_date_key`, nên trong thực tế cách 2 chặn được đúng tình huống hay gặp (nạp lại cùng một phân vùng hai lần). Trường hợp còn lại — cùng `invoice_line_id` xuất hiện dưới hai ngày khác nhau — là dấu hiệu **lỗi ở hệ nguồn**, và DQ rule sau đây sẽ bắt được:
+**Quyết định: chọn cách 2, bù bằng DQ quy tắc kiểm tra duy nhất toàn cục.**
+Lý do: một `invoice_line_id` về bản chất chỉ thuộc **một** `service_date_key`, nên trong thực tế cách 2 chặn được đúng tình huống hay gặp (nạp lại cùng một phân vùng hai lần). Trường hợp còn lại — cùng `invoice_line_id` xuất hiện dưới hai ngày khác nhau — là dấu hiệu **lỗi ở hệ nguồn**, và DQ quy tắc sau đây sẽ bắt được:
 
 ```sql
 -- DQ rule DQ-UNIQ-001 : duy nhất toàn cục của grain fact_sales_line
@@ -181,7 +181,7 @@ Bắt buộc đặt tên tường minh. Để SQL Server tự sinh tên (`PK__fa
 
 ---
 
-## 5. Index và Partition
+## 5. Index và phân vùng
 
 ### Partition function và scheme
 
@@ -210,16 +210,16 @@ Dùng `RANGE RIGHT` để biên `20260801` thuộc **phân vùng tháng 8**, đ�
 | Loại bảng | Index chính | Index phụ | Lý do |
 |---|---|---|---|
 | `lnd.*` | **Không có** (heap) | — | Chỉ ghi một lần rồi đọc một lần; index chỉ làm chậm nạp |
-| `crt.*` | CLUSTERED trên business key | NC trên FK + cột hay lọc; NC trên `(_run_id)` | Phục vụ đối soát và join khi build `dm` |
+| `crt.*` | CLUSTERED trên nghiệp vụ key | NC trên FK + cột hay lọc; NC trên `(_run_id)` | Phục vụ đối soát và join khi build `dm` |
 | `dm.dim_*` nhỏ (<100k) | CLUSTERED PK trên SK (rowstore) | UNIQUE `(bk, valid_from)`; filtered UNIQUE `WHERE is_current=1`; NC `(bk, valid_from, valid_to)` | Join theo SK; temporal join khi nạp fact |
 | `dm.fact_*` lớn | **CLUSTERED COLUMNSTORE**, aligned theo phân vùng | UNIQUE NC trên `(date_key, grain_id)` | Nén 5–10×, quét nhanh; NC chặn nạp trùng |
 | `dm.fact_*` nhỏ (<100k) | CLUSTERED rowstore trên PK | — | Dưới 102.400 dòng/rowgroup, columnstore **chậm hơn** rowstore |
 | `dm.fact_booking_lifecycle` | CLUSTERED rowstore trên `booking_id` | NC trên `booked_date_key` INCLUDE cờ phễu | Bị UPDATE liên tục → columnstore không phù hợp |
 | `svg_bi.agg_*` | CLUSTERED rowstore trên `(date_key, dim_sk)` | — | Bảng nhỏ, truy vấn theo khoảng ngày |
 
-**Nguyên tắc: fact chỉ có tối đa 1–2 index phụ.** Mỗi index phụ trên fact làm chậm việc nạp và tăng dung lượng. Nếu dashboard chậm, giải pháp đúng là **thêm bảng tổng hợp ở `svg_bi`**, không phải thêm index vào fact.
+**Nguyên tắc: fact chỉ có tối đa 1–2 index phụ.** Mỗi index phụ trên fact làm chậm việc nạp và tăng dung lượng. Nếu báo cáo chậm, giải pháp đúng là **thêm bảng tổng hợp ở `svg_bi`**, không phải thêm index vào fact.
 
-### Sliding window — lưu trữ dữ liệu cũ trong vài giây
+### Cửa sổ trượt — chuyển dữ liệu cũ ra trong vài giây
 
 Khi cần đưa dữ liệu quá 25 tháng ra khỏi DWH (bước 3 ở mục 7.6):
 
@@ -244,7 +244,7 @@ DROP TABLE dm.fact_sales_line_switchout;
 
 ---
 
-## 6. Volumetrics — dự toán số dòng và dung lượng
+## 6. Dự toán số dòng và dung lượng
 
 không có volumetrics thì mọi quyết định về index, partition và chọn DBMS đều là phỏng đoán. Đây cũng là bước kiểm chứng lại lựa chọn công nghệ ở [mục 7.1](../08-operations/van-hanh.md#1-lựa-chọn-công-nghệ).
 
@@ -255,8 +255,8 @@ không có volumetrics thì mọi quyết định về index, partition và ch�
 | Số salon (hiện tại) | 20 | Thực tế |
 | Lượt treatment / salon / ngày | 45 | 10 buồng × 6 slot × ~75% lấp buồng |
 | Ngày hoạt động / năm | 350 | Nghỉ Tết |
-| Dịch vụ / lần đến | 1,25 | Tỷ lệ up-sell hiện tại |
-| Tỷ lệ no-show | 12% | Thực tế ngành |
+| Dịch vụ / lần đến | 1,25 | Tỷ lệ bán thêm tại chỗ hiện tại |
+| Tỷ lệ khách không đến | 12% | Thực tế ngành |
 | Tỷ lệ hoá đơn có bán lẻ sản phẩm | 30%, 1,4 dòng | Thực tế ngành |
 | Tỷ lệ gửi feedback | 35% | Thực tế ngành |
 
@@ -274,7 +274,7 @@ không có volumetrics thì mọi quyết định về index, partition và ch�
 | `fact_booking_lifecycle` | = số booking | **286.000** | 28,6 tr |
 | `fact_customer_monthly_snapshot` | khách active × 12 | **~420.000** | 42,0 tr |
 | `fact_ad_spend` | 350 × 30 campaign × 2 platform | **21.000** | 21.000 |
-| *App event (chỉ ở Lake, không vào DWH)* | — | *~2,5 tr* | *250 tr* |
+| *App sự kiện (chỉ ở Lake, không vào DWH)* | — | *~2,5 tr* | *250 tr* |
 
 ### Dự toán dung lượng `dm` (fact lớn nhất)
 
@@ -288,11 +288,11 @@ không có volumetrics thì mọi quyết định về index, partition và ch�
 
 ### Ba kết luận thiết kế từ volumetrics
 
-**1. Ở quy mô 20 salon, dung lượng không phải vấn đề gì cả.** Toàn bộ datamart nằm gọn trong RAM của một server tầm trung. Điều này **xác nhận** quyết định giữ FK enforced ở mục 5.4 và quyết định chọn SQL Server ở mục 7.1.
+**1. Ở quy mô 20 salon, dung lượng không phải vấn đề gì cả.** Toàn bộ kho phân tích nằm gọn trong RAM của một server tầm trung. Điều này **xác nhận** quyết định giữ FK enforced ở mục 5.4 và quyết định chọn SQL Server ở mục 7.1.
 
 **2. Ngay ở quy mô 2.000 salon, `dm` cũng chỉ ~15 GB.** Fact lớn nhất đạt ~210 triệu dòng sau 5 năm — vẫn dưới ngưỡng 1 tỷ dòng ở bước 3 của mục 7.6. Nghĩa là **bước 4 (di trú sang MPP) rất có thể không bao giờ cần đến**. Đường thoát vẫn phải giữ, nhưng không nên đầu tư trước cho nó.
 
-**3. Bảng lớn nhất của toàn hệ thống là app event (250 triệu dòng/năm ở quy mô 2.000 salon) — và nó không nằm trong DWH.** Nó nằm ở S3/Iceberg, nơi lưu trữ rẻ và tính toán tách rời. Đây chính là lý do kiến trúc **Lake + Warehouse** thay vì chỉ một trong hai: dữ liệu hành vi khối lượng lớn ở Lake, dữ liệu giao dịch cần join nhanh ở Warehouse.
+**3. Bảng lớn nhất của toàn hệ thống là app sự kiện (250 triệu dòng/năm ở quy mô 2.000 salon) — và nó không nằm trong DWH.** Nó nằm ở S3/Iceberg, nơi lưu trữ rẻ và tính toán tách rời. Đây chính là lý do kiến trúc **Lake + Warehouse** thay vì chỉ một trong hai: dữ liệu hành vi khối lượng lớn ở Lake, dữ liệu giao dịch cần join nhanh ở Warehouse.
 
 > **Điểm nghẽn thật sự không phải dung lượng mà là THỜI GIAN NẠP.** Ở quy mô 2.000 salon, mỗi đêm phải nạp ~1,2 triệu dòng fact trong cửa sổ 05:00–06:40. Đó là lý do các quyết định về idempotent, phân vùng và `TRUNCATE PARTITION` quan trọng hơn nhiều so với việc tiết kiệm vài GB.
 

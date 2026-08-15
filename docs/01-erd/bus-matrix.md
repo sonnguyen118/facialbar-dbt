@@ -4,14 +4,14 @@ Ma trận fact × dimension. Artifact trung tâm của lớp thiết kế logic:
 
 
 
-Bus Matrix là bảng có **hàng là các fact table** (business process) và **cột là các dimension**; ô được đánh dấu nghĩa là fact đó dùng dim đó.
+Bus Matrix là bảng có **hàng là các fact table** (nghiệp vụ process) và **cột là các dimension**; ô được đánh dấu nghĩa là fact đó dùng dim đó.
 
 Bus Matrix quyết định ba việc:
 1. Cột xuất hiện ở nhiều hàng → đó là **conformed dimension**, phải dựng **một bản dùng chung**. Mỗi mart tự dựng một `dim_customer` riêng là con đường chắc chắn dẫn tới "mỗi phòng ban một con số".
 2. Nó cho **thứ tự triển khai**: dim nào được dùng nhiều nhất thì làm trước.
 3. Nó cho biết **so sánh chéo nào là hợp lệ** — hai fact chỉ so được với nhau qua những dim mà **cả hai** đều có.
 
-| Fact / Business Process | Grain | date | time | customer | salon | employee | room | service | product | promotion | payment_method | campaign | junk |
+| Fact / Nghiệp vụ Quy trình | độ hạt | date | time | customer | salon | employee | room | service | product | promotion | payment_method | campaign | junk |
 |---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | `fact_booking_line` | 1 dịch vụ được đặt | ✓ | ✓ | ✓ | ✓ | | | ✓ | | ✓ | | ✓ | ✓ |
 | `fact_appointment` | 1 lịch hẹn | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | | | | ✓ |
@@ -29,9 +29,9 @@ Bus Matrix quyết định ba việc:
 
 ### Ba kết luận thiết kế đọc trực tiếp từ Bus Matrix
 
-**1. `dim_date`, `dim_customer`, `dim_salon` có mặt ở gần như mọi fact** → ba dim này phải dựng đầu tiên (Sprint 1) và tuyệt đối không được tồn tại hai bản.
+**1. `dim_date`, `dim_customer`, `dim_salon` có mặt ở gần như mọi fact** → ba dim này phải dựng đầu tiên (Giai đoạn 1) và tuyệt đối không được tồn tại hai bản.
 
-**2. `fact_ad_spend` có grain thô hơn hẳn** (ngày × chiến dịch, không có customer) → **cấm join trực tiếp** với `fact_sales_line`. Muốn tính ROAS phải tổng hợp `fact_sales_line` lên mức ngày × campaign **trước**, rồi mới join hai bảng cùng grain — đây chính là kỹ thuật *drilling across*:
+**2. `fact_ad_spend` có độ hạt thô hơn hẳn** (ngày × chiến dịch, không có customer) → **cấm join trực tiếp** với `fact_sales_line`. Muốn tính ROAS phải tổng hợp `fact_sales_line` lên mức ngày × campaign **trước**, rồi mới join hai bảng cùng độ hạt — đây chính là kỹ thuật *drilling across*:
 
 ```sql
 WITH rev AS (   -- đưa fact chi tiết LÊN đúng grain của fact kia
@@ -56,7 +56,7 @@ FULL OUTER JOIN spd s ON r.date_key = s.date_key AND r.campaign_sk = s.campaign_
 `FULL OUTER JOIN` là cố ý: giữ được cả chiến dịch tốn tiền mà không ra doanh thu (ROAS = 0) và doanh thu không gắn chiến dịch nào.
 
 **3. `fact_payment` không có `dim_service`** → bảng này **không trả lời được** câu "dịch vụ nào thu được nhiều tiền nhất". Câu đó phải hỏi `fact_sales_line`. Ngược lại `fact_sales_line` không có `dim_payment_method` → câu "khách trả bằng gì nhiều nhất" phải hỏi `fact_payment`.
-Đây không phải thiếu sót mà là **hệ quả tất yếu của grain**: hình thức thanh toán gắn với **lần chuyển tiền**, không gắn với **dòng hoá đơn** — một hoá đơn trả bằng 2 thẻ thì không có cách nào gán "hình thức thanh toán" cho từng dòng hoá đơn mà không bịa dữ liệu.
+Đây không phải thiếu sót mà là **hệ quả tất yếu của độ hạt**: hình thức thanh toán gắn với **lần chuyển tiền**, không gắn với **dòng hoá đơn** — một hoá đơn trả bằng 2 thẻ thì không có cách nào gán "hình thức thanh toán" cho từng dòng hoá đơn mà không bịa dữ liệu.
 
 ---
 ---

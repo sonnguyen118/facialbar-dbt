@@ -6,10 +6,10 @@ Tài liệu tổng thiết kế cho hệ thống phân tích dữ liệu chuỗi
 
 | | |
 |---|---|
-| **Phạm vi** | Cơ sở dữ liệu phân tích, hồ dữ liệu, đường ống nạp, kiểm soát chất lượng, bộ báo cáo |
+| **Phạm vi** | Cơ sở dữ liệu ứng dụng, cơ sở dữ liệu phân tích, hồ dữ liệu, đường ống nạp, kiểm soát chất lượng, bộ báo cáo |
 | **Quy mô hiện tại** | 20 chi nhánh · thiết kế kiểm chứng đến 2.000 chi nhánh |
-| **Nền tảng** | Amazon S3 + Apache Iceberg (hồ dữ liệu) · SQL Server (kho phân tích) · Airflow (điều phối) |
-| **Khối lượng thiết kế** | 94 bảng · 2 view · 10 quy trình nạp · 58 quy tắc chất lượng · 24 chỉ tiêu · 8 bộ báo cáo |
+| **Nền tảng** | PostgreSQL (ứng dụng) · Amazon S3 + Apache Iceberg (hồ dữ liệu) · SQL Server (kho phân tích) · Airflow (điều phối) |
+| **Khối lượng thiết kế** | 40 bảng ứng dụng · 94 bảng kho phân tích · 2 view · 10 quy trình nạp · 58 quy tắc chất lượng · 24 chỉ tiêu · 8 bộ báo cáo |
 | **Thời gian triển khai** | 18 tuần (9 giai đoạn × 2 tuần) · 16,95 người-tháng |
 
 
@@ -17,9 +17,22 @@ Tài liệu tổng thiết kế cho hệ thống phân tích dữ liệu chuỗi
 
 ---
 
-## 1. HAI LUỒNG THIẾT KẾ
+## 1. HAI CƠ SỞ DỮ LIỆU, HAI LUỒNG THIẾT KẾ
 
-Thiết kế được tiếp cận từ hai trục vuông góc nhau. Đọc cả hai mới đủ.
+Hệ thống có **hai cơ sở dữ liệu riêng biệt**, phục vụ hai việc khác hẳn nhau. Nhầm lẫn hai cái này là nguồn gốc của phần lớn thiết kế sai.
+
+| | Cơ sở dữ liệu ứng dụng | Kho phân tích |
+|---|---|---|
+| Tài liệu | **[Thiet-Ke-DB-WebApp.md](Thiet-Ke-DB-WebApp.md)** | Tài liệu này và [docs/](docs/) |
+| Nền tảng | PostgreSQL, schema `app`, 40 bảng | SQL Server, 6 schema, 94 bảng |
+| Việc phải làm nhanh | Ghi một lịch hẹn, thu một khoản tiền | Cộng doanh thu 5 năm theo chi nhánh |
+| Dạng chuẩn | 3NF, không lặp dữ liệu | Phi chuẩn hoá có kiểm soát |
+| Lịch sử | Chỉ giữ trạng thái hiện tại | Giữ toàn bộ lịch sử bằng SCD Type 2 |
+| Một câu truy vấn | Dưới 10 ms | Dưới 5 giây |
+
+Dữ liệu chảy một chiều: `app` → Debezium đọc WAL → Kafka → hồ dữ liệu → `lnd` → `crt` → `dm`. Kho phân tích **không bao giờ ghi ngược** về ứng dụng.
+
+Riêng phần kho phân tích được tiếp cận từ hai trục vuông góc nhau. Đọc cả hai mới đủ.
 
 | Luồng | Trục | Trả lời | Đối tượng đọc |
 |---|---|---|---|
@@ -98,7 +111,7 @@ Khối dữ liệu lớn nhất của hệ thống là sự kiện ứng dụng,
 | `crt` | 26 + 1 view | **Đối soát với nguồn**, gộp định danh | 3NF | Dữ liệu, Kiểm toán |
 | `dm` | 13 dim + 10 Fact + 1 cầu nối | **Chốt định nghĩa chỉ tiêu**, star schema | Phi chuẩn hoá có kiểm soát | Dữ liệu, Phân tích |
 | `svg_bi` | 6 | Bảng tổng hợp sẵn cho báo cáo | Phi chuẩn hoá | Toàn bộ, qua công cụ báo cáo |
-| `ctl` | 8 | Trạng thái pipeline, từ điển chỉ tiêu | — | Dữ liệu |
+| `ctl` | 8 | Trạng thái đường ống dữ liệu, từ điển chỉ tiêu | — | Dữ liệu |
 | `qtn` | 1 + 1 view | Dòng lỗi chờ xử lý | — | Dữ liệu, chủ sở hữu miền |
 
 **Ranh giới bắt buộc:** công cụ báo cáo chỉ đọc `dm` và `svg_bi`. Cấm `lnd`, `crt`, `ctl` — chưa qua cổng kiểm tra chất lượng.
@@ -237,7 +250,7 @@ Fact lớn nhất đạt ~210 triệu dòng sau 5 năm ở quy mô 2.000 chi nh�
 | DDL: `lnd` 29, `crt` 26+view, `dm` 24, `svg_bi` 6, `ctl` 8, `qtn` 1+view | Xong |
 | Script khởi tạo: 16 script | Xong |
 | Quy trình nạp: 10 procedure mẫu, phủ 4 khuôn nạp áp dụng cho 23 bảng còn lại | Xong |
-| Catalog quy tắc chất lượng: 58 quy tắc | Xong |
+| Danh mục quy tắc chất lượng: 58 quy tắc | Xong |
 | Từ điển chỉ tiêu: 24 chỉ tiêu | Xong — **chưa có chữ ký nghiệp vụ** |
 | Triển khai thực tế | Chưa bắt đầu — xem [lộ trình](docs/09-roadmap/lo-trinh.md) |
 
@@ -264,18 +277,19 @@ Các chỉ tiêu tương ứng **sẽ không tính được** nếu không đư�
 
 Định nghĩa doanh thu · kỳ ghi nhận doanh thu · quy gán kênh marketing · nguồn chân lý từng loại dữ liệu · chính sách lưu trữ · xử lý dữ liệu nhạy cảm · cam kết sẵn sàng số liệu · nền tảng kho dữ liệu.
 
-Chưa chốt tám nội dung này thì không bắt đầu được giai đoạn 2 → [Ban-Thiet-Ke-CSDL.md](Ban-Thiet-Ke-CSDL.md#6-các-quyết-định-cần-ban-lãnh-đạo-phê-duyệt)
+Chưa chốt tám nội dung này thì không bắt đầu được giai đoạn 2 → [Ban-Thiet-Ke-CSDL.md](Ban-Thiet-Ke-CSDL.md#2-tám-quyết-định-cần-phê-duyệt)
 
 ---
 
 ## 10. ĐIỀU HƯỚNG TÀI LIỆU
 
-### Ba tài liệu gốc
+### Năm tài liệu gốc
 
 | Tài liệu | Nội dung | Dùng khi |
 |---|---|---|
 | **README.md** (file này) | Tổng thiết kế: kiến trúc, kiến trúc dữ liệu, chuẩn thiết kế, trạng thái | Vào dự án lần đầu, hoặc cần tra nhanh con số tổng thể |
-| **[Flow-DA.md](Flow-DA.md)** | Luồng thiết kế theo góc nhìn phân tích: 10 bước từ nghiệp vụ đến báo cáo | Thiết kế bảng mới, định nghĩa chỉ tiêu mới |
+| **[Thiet-Ke-DB-WebApp.md](Thiet-Ke-DB-WebApp.md)** | Cơ sở dữ liệu vận hành của ứng dụng: 40 bảng PostgreSQL, chống trùng lịch, lũy đẳng thanh toán, outbox | Xây hoặc sửa ứng dụng đặt lịch, thêm bảng nghiệp vụ mới |
+| **[Flow-DA.md](Flow-DA.md)** | Luồng thiết kế theo góc nhìn phân tích: 10 bước từ nghiệp vụ đến báo cáo | Thiết kế bảng phân tích mới, định nghĩa chỉ tiêu mới |
 | **[Flow.md](Flow.md)** | Luồng hệ thống: 6 chặng từ nguồn đến báo cáo | Xây dựng hoặc sửa đường ống dữ liệu |
 | **[Ban-Thiet-Ke-CSDL.md](Ban-Thiet-Ke-CSDL.md)** | Bản trình phê duyệt cho ban lãnh đạo | Trình duyệt, xin nguồn lực, xin quyết định chính sách |
 
@@ -301,6 +315,7 @@ Chỉ mục đầy đủ kèm thứ tự đọc khi triển khai: [docs/README.m
 
 | Vai trò | Đọc theo thứ tự |
 |---|---|
+| Lập trình ứng dụng | README mục 1 → [Thiet-Ke-DB-WebApp.md](Thiet-Ke-DB-WebApp.md) |
 | Phân tích dữ liệu | README → [Flow-DA.md](Flow-DA.md) → [docs/01-erd/](docs/01-erd/) → [docs/07-analytics/](docs/07-analytics/) |
 | Kỹ sư dữ liệu | README → [Flow.md](Flow.md) → [docs/02-mapping/](docs/02-mapping/) → [docs/03-ddl/](docs/03-ddl/) → [docs/04-etl/](docs/04-etl/) |
 | Quản trị cơ sở dữ liệu | README mục 4 → [docs/03-ddl/00-init.md](docs/03-ddl/00-init.md) → [docs/03-ddl/](docs/03-ddl/) |

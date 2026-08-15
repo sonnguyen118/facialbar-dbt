@@ -1,6 +1,6 @@
 # DDL — Schema `dm` · Dimension
 
-13 dimension của star schema. Nguồn từng cột: [Source-to-Target Mapping](../02-mapping/source-to-target.md#mapping-crt--dm).
+13 dimension của star schema. Nguồn từng cột: [Source-to-Target Mapping](../02-mapping/source-to-target.md#ánh-xạ-crt-sang-dm).
 Script nạp dữ liệu khởi tạo: [04-etl/seed.md](../04-etl/seed.md). Quy trình nạp: [04-etl/load-dimension.md](../04-etl/load-dimension.md).
 
 
@@ -253,7 +253,7 @@ CREATE UNIQUE INDEX UX_dim_service_current ON dm.dim_service (service_id) WHERE 
 
 ## 5. Các dimension SCD Type 1 (nhỏ, không cần lịch sử)
 
-Tất cả cùng một khuôn: SK + business key + thuộc tính + `_updated_at`, không có bộ SCD2.
+Tất cả cùng một khuôn: SK + nghiệp vụ key + thuộc tính + `_updated_at`, không có bộ SCD2.
 
 ```sql
 CREATE TABLE dm.dim_product (

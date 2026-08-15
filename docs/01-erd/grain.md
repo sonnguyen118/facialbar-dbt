@@ -1,16 +1,16 @@
-# Bảng khai báo Grain
+# bảng khai báo độ hạt
 
-Grain là độ hạt của bảng: một dòng đại diện cho cái gì. Đây là khai báo bắt buộc cho mọi bảng, và phải được thực thi bằng `UNIQUE` constraint trong DDL — không chỉ ghi trong tài liệu.
+độ hạt là độ hạt của bảng: một dòng đại diện cho cái gì. Đây là khai báo bắt buộc cho mọi bảng, và phải được thực thi bằng `UNIQUE` constraint trong DDL — không chỉ ghi trong tài liệu.
 
 Ràng buộc thực thi: [03-ddl/00-init.md mục 4](../03-ddl/00-init.md#4-chiến-lược-khoá-và-ràng-buộc). Quy tắc kiểm tra: [05-quality/dq-rules.md mục 4](../05-quality/dq-rules.md#4-uniqueness--duy-nhất).
 
 
 
-Grain (độ hạt) là câu trả lời cho câu hỏi **"MỘT DÒNG trong bảng này đại diện cho điều gì?"** — trả lời bằng đúng một câu, không có chữ "và".
+độ hạt (độ hạt) là câu trả lời cho câu hỏi **"MỘT DÒNG trong bảng này đại diện cho điều gì?"** — trả lời bằng đúng một câu, không có chữ "và".
 
-grain quyết định mọi phép đếm và mọi phép tổng. Sai grain → `COUNT(*)` và `SUM()` sai → toàn bộ báo cáo sai, nhưng **không có lỗi nào báo ra**. Loại sai này không sinh thông báo lỗi nên không phát hiện được bằng kiểm thử thông thường.
+độ hạt quyết định mọi phép đếm và mọi phép tổng. Sai độ hạt → `COUNT(*)` và `SUM()` sai → toàn bộ báo cáo sai, nhưng **không có lỗi nào báo ra**. Loại sai này không sinh thông báo lỗi nên không phát hiện được bằng kiểm thử thông thường.
 
-### Bảng khai báo Grain (bắt buộc có cho mọi bảng)
+### bảng khai báo độ hạt (bắt buộc có cho mọi bảng)
 
 Cột **Khoá duy nhất** là khoá xác định độ hạt. Với 7 Fact giao dịch, index thực thi trong DDL là `UX_fact_*_grain` gồm **cột phân vùng đứng trước khoá nghiệp vụ** — ví dụ `(service_date_key, invoice_line_id)`. Cột ngày ở đó là yêu cầu của SQL Server để index gióng theo phân vùng và `SWITCH PARTITION` chạy được, không phải một phần của độ hạt.
 
@@ -30,7 +30,7 @@ Cột **Khoá duy nhất** là khoá xác định độ hạt. Với 7 Fact giao
 | `dim_membership_tier` | 1 hạng thành viên | tier_code *(khoá tự nhiên, không có khoá đại diện)* | — |
 | `dim_booking_junk` | 1 **tổ hợp** của 5 cờ đặt lịch | (booking_channel, is_first_visit, is_promotion_applied, is_member, is_rescheduled) | — |
 | `fact_booking_line` | 1 **dịch vụ được đặt** trong 1 booking | booking_item_id | số dịch vụ đặt, giá trị đặt |
-| `fact_appointment` | 1 **lịch hẹn** | appointment_id | số lịch hẹn, no-show, thời gian chờ |
+| `fact_appointment` | 1 **lịch hẹn** | appointment_id | số lịch hẹn, khách không đến, thời gian chờ |
 | `fact_treatment` | 1 **dịch vụ đã thực hiện** | treatment_id | số lượt làm, phút phục vụ |
 | `fact_sales_line` | 1 **dòng hoá đơn** | invoice_line_id | **doanh thu**, giảm giá, COGS |
 | `fact_payment` | 1 **lần chuyển tiền** | payment_id | tiền thực thu |
@@ -41,11 +41,11 @@ Cột **Khoá duy nhất** là khoá xác định độ hạt. Với 7 Fact giao
 | `fact_customer_monthly_snapshot` | 1 khách × 1 tháng | (year_month, customer_sk) | số dư điểm cuối kỳ, lượt đến trong tháng, doanh thu trong tháng |
 | `dm.bridge_sales_promotion` | 1 **cặp** dòng hoá đơn × khuyến mãi | (invoice_line_id, promotion_sk) | tiền giảm giá đã phân bổ, hệ số phân bổ |
 
-### Double counting — minh hoạ bằng số
+### Đếm trùng — minh hoạ bằng số
 
 Khách **Lan** đặt 1 booking gồm 2 dịch vụ: *Hydrafacial 1.200.000đ* và *Massage vai gáy 300.000đ*.
 
-Bảng `fact_booking_line` (grain = 1 dịch vụ đặt) sẽ có **2 dòng**:
+Bảng `fact_booking_line` (độ hạt = 1 dịch vụ đặt) sẽ có **2 dòng**:
 
 | booking_id | booking_item_id | customer | service | line_amount |
 |---|---|---|---|---|
@@ -58,7 +58,7 @@ Bảng `fact_booking_line` (grain = 1 dịch vụ đặt) sẽ có **2 dòng**:
 | Bao nhiêu khách đã đặt? | `COUNT(customer_id)` | **2** ❌ | `COUNT(DISTINCT customer_id)` | **1** ✅ |
 | Tổng giá trị đặt? | `SUM(line_amount)` | **1.500.000** ✅ | `SUM(line_amount)` | 1.500.000 ✅ |
 
-→ Cùng một bảng: `SUM` thì đúng, `COUNT` thì sai. **Đó chính là hệ quả của grain.**
+→ Cùng một bảng: `SUM` thì đúng, `COUNT` thì sai. **Đó chính là hệ quả của độ hạt.**
 
 **Trường hợp nghiêm trọng hơn — join làm nhân dòng (fan-out):**
 
@@ -69,9 +69,9 @@ Nếu join `fact_sales_line` (3 dòng hoá đơn) với `fact_payment` (khách t
 ```
 
 **Cách phòng 3 lớp:**
-1. **Không bao giờ join 2 fact trực tiếp với nhau.** Muốn so sánh thì tổng hợp từng fact về cùng grain trước, rồi mới join (kỹ thuật *drilling across*).
+1. **Không bao giờ join 2 fact trực tiếp với nhau.** Muốn so sánh thì tổng hợp từng fact về cùng độ hạt trước, rồi mới join (kỹ thuật *drilling across*).
 2. Luôn đi qua bảng phân bổ (`payment_allocation`) khi quan hệ là N:N.
-3. Ghi rõ grain vào comment của bảng và vào data catalog.
+3. Ghi rõ độ hạt vào comment của bảng và vào data catalog.
 
 ### Ba loại Fact — chọn đúng loại theo câu hỏi nghiệp vụ
 

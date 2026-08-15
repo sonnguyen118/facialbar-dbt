@@ -239,6 +239,8 @@ Bảng tách rõ phần đã xác định được từ thiết kế và phần 
 | Vết kiểm toán | Ghi lại ai truy cập dữ liệu nhạy cảm, giữ 10 năm |
 | Tách môi trường | Môi trường phát triển dùng dữ liệu đã làm mờ, không dùng dữ liệu thật |
 
+Ma trận quyền chi tiết theo từng vai trò và từng tầng dữ liệu: [docs/08-operations/van-hanh.md](docs/08-operations/van-hanh.md).
+
 ### 4.2. Chất lượng số liệu
 
 Hệ thống có **58 quy tắc kiểm tra** chạy tự động mỗi ngày trên bảy nhóm: đầy đủ, chính xác, nhất quán, duy nhất, hợp lệ, kịp thời, và mô hình chiều. Danh mục đầy đủ: [docs/05-quality/dq-rules.md](docs/05-quality/dq-rules.md).

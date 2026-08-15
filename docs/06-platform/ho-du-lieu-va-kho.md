@@ -8,12 +8,12 @@ DDL từng tầng: [../03-ddl/](../03-ddl/). Quy trình nạp: [../04-etl/](../0
 
 ## 1. Hồ dữ liệu S3
 
-Data Lake là nơi lưu trữ tập trung dữ liệu ở quy mô lớn, chứa được nhiều định dạng và **giữ dữ liệu gần với dạng gốc của nguồn**.
+hồ dữ liệu là nơi lưu trữ tập trung dữ liệu ở quy mô lớn, chứa được nhiều định dạng và **giữ dữ liệu gần với dạng gốc của nguồn**.
 **Chọn công nghệ:** Amazon S3.
 
-**Lake lưu những gì:** dữ liệu có cấu trúc (customer, booking, payment, treatment, product, salon, employee, marketing, feedback), bán cấu trúc (JSON event, CSV export, log), và có thể cả phi cấu trúc (ảnh trước/sau điều trị, tài liệu đồng ý điều trị).
+**Lake lưu những gì:** dữ liệu có cấu trúc (customer, booking, payment, treatment, product, salon, employee, marketing, feedback), bán cấu trúc (JSON sự kiện, CSV export, log), và có thể cả phi cấu trúc (ảnh trước/sau điều trị, tài liệu đồng ý điều trị).
 
-### Ba zone chính
+### Ba phân vùng chính
 
 | Zone | Mục đích | Định dạng | Nguyên tắc |
 |---|---|---|---|
@@ -21,7 +21,7 @@ Data Lake là nơi lưu trữ tập trung dữ liệu ở quy mô lớn, chứa 
 | **cleansed/** | Bản đã chuẩn hoá, dùng được cho hạ nguồn | Parquet + Snappy | Có schema rõ ràng, đã ép kiểu |
 | **archive/** | Giữ file **đã nạp thành công**, phục vụ replay/recovery | Như raw | Chỉ chuyển vào sau khi nạp xong |
 
-### Nguyên tắc Immutable (Bất biến) — Write Once
+### Nguyên tắc bất biến — ghi một lần
 
 File đã ghi vào Lake thì **không sửa trực tiếp**. Muốn có bản mới → ghi file mới.
 
@@ -32,8 +32,8 @@ raw/pos/booking/dt=2026-08-14/booking_20260814_v2.parquet   ← nguồn gửi l�
 
 Ba lý do:
 1. **Audit** — khi số liệu lệch, phải chứng minh được nguồn đã gửi cái gì. Ghi đè là mất chứng cứ.
-2. **Reproducibility** — chạy lại pipeline của tháng trước phải ra đúng kết quả tháng trước.
-3. **An toàn trước lỗi code** — pipeline có bug thì chỉ cần sửa code rồi chạy lại từ raw. Nếu raw đã bị ghi đè bằng dữ liệu lỗi → mất vĩnh viễn.
+2. **Reproducibility** — chạy lại đường ống dữ liệu của tháng trước phải ra đúng kết quả tháng trước.
+3. **An toàn trước lỗi code** — đường ống dữ liệu có bug thì chỉ cần sửa code rồi chạy lại từ raw. Nếu raw đã bị ghi đè bằng dữ liệu lỗi → mất vĩnh viễn.
 
 ### Cấu trúc thư mục chuẩn
 
@@ -67,12 +67,12 @@ s3://facialbar-lake/
 | 2 | **Type Casting** | Ép kiểu về đúng chuẩn | `"1200000.00"` → `DECIMAL(18,2)`; `"14/08/2026"` → `DATE` |
 | 3 | **Column Standardization** | Chuẩn tên cột, chuẩn giá trị | `CustomerID`/`cust_id` → `customer_id`; `"Nam"`/`"M"`/`"male"` → `M` |
 | 4 | **CDC Deduplication** | Loại bản ghi trùng, lấy phiên bản cuối | `ROW_NUMBER() ... ORDER BY _lsn DESC` |
-| 5 | **Data Quality** | Chạy rule kiểm tra chất lượng | `amount >= 0`, `occurred_at <= now()` |
+| 5 | **chất lượng dữ liệu** | Chạy quy tắc kiểm tra chất lượng | `amount >= 0`, `occurred_at <= now()` |
 | 6 | **Ghi Parquet + Snappy** | Định dạng cột, nén | Nhỏ hơn JSON ~5–10 lần, đọc nhanh hơn nhiều |
 
 Parquet lưu theo **cột**, nên câu `SELECT SUM(net_amount)` chỉ đọc đúng 1 cột thay vì cả dòng. Nén tốt hơn vì dữ liệu cùng cột có cùng kiểu. Snappy nén nhẹ hơn gzip nhưng **giải nén nhanh hơn nhiều** và cho phép chia file để xử lý song song — đánh đổi đúng cho phân tích.
 
-### Archive Zone — cơ chế phục hồi
+### Phân vùng lưu trữ — cơ chế phục hồi
 
 ```mermaid
 flowchart LR
@@ -89,12 +89,12 @@ flowchart LR
 >
 > | | Database Backup | Archive Zone |
 > |---|---|---|
-> | Định nghĩa | Bản sao **trạng thái** của DB | Bản sao **dữ liệu đầu vào** của pipeline |
-> | Phục hồi được gì | Đưa DB về thời điểm T | **Chạy lại** pipeline từ đầu |
-> | Ai dùng | DBA | Data Engineer |
+> | Định nghĩa | Bản sao **trạng thái** của DB | Bản sao **dữ liệu đầu vào** của đường ống dữ liệu |
+> | Phục hồi được gì | Đưa DB về thời điểm T | **Chạy lại** đường ống dữ liệu từ đầu |
+> | Ai dùng | DBA | Kỹ sư dữ liệu |
 > | Khi nào dùng | Server chết, xoá bảng nhầm | Logic transform sai, cần nạp lại 3 tháng |
 
-### Apache Iceberg — Open Table Format
+### Apache Iceberg — định dạng bảng mở
 
 Iceberg là một lớp **metadata** đặt lên trên các file Parquet trên S3, biến một đống file rời rạc thành một **bảng** thực sự có schema, có phiên bản, có transaction.
 
@@ -137,7 +137,7 @@ Iceberg là một lớp **metadata** đặt lên trên các file Parquet trên S
 
 Đây là hộp tím ở giữa sơ đồ, làm 4 việc theo thứ tự: **Đọc → Kiểm tra → Nạp → Ghi watermark**.
 
-### Khái niệm Watermark
+### Mốc thu nạp
 
 Watermark là một dấu mốc được lưu lại, ghi nhớ "đã xử lý đến đâu rồi", để lần chạy sau chỉ lấy phần mới.
 
@@ -150,9 +150,9 @@ không có watermark thì mỗi lần chạy phải quét lại toàn bộ dữ 
 | Theo phân vùng ngày | `dt=2026-08-14` | File trên S3 |
 | Theo danh sách file | Tên các file đã nạp | Nguồn gửi file không theo lịch |
 
-### Tính Idempotent (chạy lại không sai)
+### Tính lũy đẳng — chạy lại không sai số
 
-Chạy pipeline 1 lần hay 5 lần với cùng dữ liệu đầu vào đều cho **cùng một kết quả**.
+Chạy đường ống dữ liệu 1 lần hay 5 lần với cùng dữ liệu đầu vào đều cho **cùng một kết quả**.
 
 đường ống sẽ có lúc hỏng và phải chạy lại. Nếu không lũy đẳng, mỗi lần chạy lại cộng thêm một bản dữ liệu, làm doanh thu tăng mà không có dấu vết giải thích.
 
@@ -202,13 +202,13 @@ COMMIT;
 >
 > **2. `INNER JOIN` thay vì `LEFT JOIN`** sẽ khiến khách chưa có trong dim làm **mất luôn dòng doanh thu** — không lỗi, không cảnh báo.
 >
-> **3. `ISNULL(..., -1)` là bắt buộc**, không phải phòng xa. Cột FK trong fact được khai báo `NOT NULL` (mục 5.3), nên thiếu `ISNULL` thì câu INSERT sẽ fail — và đó là kết quả **tốt hơn** so với việc âm thầm ghi NULL rồi bị `INNER JOIN` của người dùng cuối xoá mất về sau.
+> **3. `ISNULL(..., -1)` là bắt buộc**, không phải phòng xa. Cột FK trong fact được khai báo `NOT NULL` (mục 5.3), nên thiếu `ISNULL` thì câu INSERT sẽ không đạt — và đó là kết quả **tốt hơn** so với việc âm thầm ghi NULL rồi bị `INNER JOIN` của người dùng cuối xoá mất về sau.
 >
 > **4. Lọc theo `service_at` chứ không phải `invoiced_at`** — doanh thu ghi nhận theo ngày dịch vụ được thực hiện (mục 4.3), và `service_date_key` cũng là khoá phân vùng (mục 5.6.1). Lọc sai cột thì partition pruning vô hiệu và số liệu lệch ngày.
 
-### Control / Metadata Tables — "Bảng điều khiển"
+### Bảng điều khiển
 
-Nhóm bảng không chứa dữ liệu nghiệp vụ, chỉ chứa thông tin về **chính pipeline**: đã chạy chưa, chạy đến đâu, kết quả thế nào.
+Nhóm bảng không chứa dữ liệu nghiệp vụ, chỉ chứa thông tin về **chính đường ống dữ liệu**: đã chạy chưa, chạy đến đâu, kết quả thế nào.
 
 không có nhóm bảng này thì khi giám đốc hỏi *"số liệu hôm nay đã đủ chưa?"* — không ai trả lời được, chỉ có thể đoán.
 
@@ -260,11 +260,11 @@ checked_at      DATETIME2
 
 ## 3. Kho dữ liệu trên SQL Server — bốn tầng
 
-Sau Data Lake, cần một nơi tối ưu cho SQL Analytics + BI + Reporting.
+Sau hồ dữ liệu, cần một nơi tối ưu cho SQL Analytics + BI + Reporting.
 
 Lake giỏi lưu trữ rẻ, linh hoạt, quy mô lớn. Warehouse giỏi query nhanh có index, có transaction, kết nối tốt với BI tool và người dùng SQL. Đây là hai vai trò khác nhau, không thay thế nhau.
 
-### Tầng 1 — `lnd` (Landing / Vùng đệm)
+### Tầng 1 — `lnd`, vùng đệm
 
 | | |
 |---|---|
@@ -272,7 +272,7 @@ Lake giỏi lưu trữ rẻ, linh hoạt, quy mô lớn. Warehouse giỏi query 
 | **Đặc điểm** | **Heap** (không index), **Overwrite** (ghi đè), **No history** (không giữ lịch sử) |
 | **Vì sao Heap** | Chỉ ghi rồi đọc một lần → index chỉ làm chậm việc ghi, không có lợi ích |
 | **Vì sao không giữ lịch sử** | **Lịch sử đã nằm ở S3** — giữ lại ở đây là trùng lặp vô ích và tốn tiền |
-| **Kiểu dữ liệu** | Để rộng (`NVARCHAR`) để **không bao giờ fail lúc nạp** — sai kiểu sẽ được bắt ở tầng sau với thông báo rõ ràng |
+| **Kiểu dữ liệu** | Để rộng (`NVARCHAR`) để **không bao giờ không đạt lúc nạp** — sai kiểu sẽ được bắt ở tầng sau với thông báo rõ ràng |
 
 ```sql
 CREATE TABLE lnd.pos_invoice_line (
@@ -287,16 +287,16 @@ CREATE TABLE lnd.pos_invoice_line (
 );
 ```
 
-### Tầng 2 — `crt` (Curated / Làm sạch nghiệp vụ)
+### Tầng 2 — `crt`, làm sạch nghiệp vụ
 
 | | |
 |---|---|
 | **Mục đích** | **Reconciliation / Đối soát với nguồn** + làm sạch nghiệp vụ. Nếu số lệch → điều tra tại đây |
 | **Việc làm** | Cleaning → Deduplication → Type casting đúng → **Gộp định danh** → Đối soát |
 | **Đặc điểm** | Đã có khoá, có index, có ràng buộc, kiểu dữ liệu chuẩn |
-| **Grain** | Vẫn giữ **đúng grain của nguồn** — chưa biến đổi theo logic nghiệp vụ |
+| **độ hạt** | Vẫn giữ **đúng độ hạt của nguồn** — chưa biến đổi theo logic nghiệp vụ |
 
-> **Vai trò thực sự của `crt`:** đây là **tầng trọng tài**. Khi kế toán nói *"doanh thu POS là 1,25 tỷ mà dashboard hiện 1,21 tỷ"*, đối chiếu `crt` với POS: `crt` lệch POS trong 0,1% thì lỗi nằm ở logic kho phân tích; lệch quá 0,1% thì lỗi nằm ở bước thu nạp. Không có tầng này thì không khoanh vùng được lỗi nằm ở khâu nào.
+> **Vai trò thực sự của `crt`:** đây là **tầng trọng tài**. Khi kế toán nói *"doanh thu POS là 1,25 tỷ mà báo cáo hiện 1,21 tỷ"*, đối chiếu `crt` với POS: `crt` lệch POS trong 0,1% thì lỗi nằm ở logic kho phân tích; lệch quá 0,1% thì lỗi nằm ở bước thu nạp. Không có tầng này thì không khoanh vùng được lỗi nằm ở khâu nào.
 
 **Gộp định danh (Identity Resolution)** — việc khó nhất ở tầng `crt`:
 
@@ -324,35 +324,35 @@ matched_at      DATETIME2
 
 Thứ tự ưu tiên gộp: `phone chuẩn hoá` → `email lowercase` → `(tên + ngày sinh + salon)` → thủ công. Trường hợp `match_confidence < 0.8` phải đưa vào danh sách cho người review, **không tự động gộp** — gộp sai 2 khách thành 1 là lỗi rất khó phát hiện và khó sửa.
 
-### Tầng 3 — `dm` (datamart, star schema)
+### Tầng 3 — `dm` (kho phân tích, star schema)
 
 | | |
 |---|---|
-| **Mục đích** | Mô hình chiều để phân tích: Fact, Dimension, **chốt định nghĩa KPI** |
-| **Việc làm** | Từ `crt` → áp **Business Logic** → sinh Fact / Dimension |
-| **Đặc điểm** | Đây là nơi **thay đổi grain** (từ grain nguồn sang grain phân tích), sinh surrogate key, áp SCD |
+| **Mục đích** | Mô hình chiều để phân tích: Fact, Dimension, **chốt định nghĩa chỉ tiêu** |
+| **Việc làm** | Từ `crt` → áp **quy tắc nghiệp vụ** → sinh Fact / Dimension |
+| **Đặc điểm** | Đây là nơi **thay đổi độ hạt** (từ độ hạt nguồn sang độ hạt phân tích), sinh surrogate key, áp SCD |
 
-**Business Logic là gì (những quy tắc chỉ tồn tại ở tầng này):**
+**quy tắc nghiệp vụ là gì (những quy tắc chỉ tồn tại ở tầng này):**
 - "Khách mới" = không có hoá đơn nào trước ngày này.
 - "No-show" = có appointment, `checkin_at IS NULL`, và đã qua giờ hẹn 30 phút.
 - Doanh thu ghi nhận **theo ngày dịch vụ được thực hiện**, không theo ngày thu tiền.
 - Membership hết hạn ngày cuối tháng thì tháng đó vẫn tính là active.
 
-### Tầng 4 — `svg_bi` (Serving / Consumption Layer)
+### Tầng 4 — `svg_bi`, phục vụ báo cáo
 
 | | |
 |---|---|
-| **Mục đích** | Bảng **tổng hợp sẵn** (pre-aggregated) để dashboard mở trong dưới 2 giây |
-| **Vì sao cần** | Dashboard mở 500 lượt/ngày, mỗi lượt quét 50 triệu dòng fact là lãng phí. Tính 1 lần lúc 5h sáng, đọc 500 lần |
+| **Mục đích** | Bảng **tổng hợp sẵn** (pre-aggregated) để báo cáo mở trong dưới 2 giây |
+| **Vì sao cần** | Báo cáo mở 500 lượt/ngày, mỗi lượt quét 50 triệu dòng fact là lãng phí. Tính 1 lần lúc 5h sáng, đọc 500 lần |
 | **Đặc điểm** | Đã denormalize, ít dòng, nhiều cột, có index phù hợp báo cáo |
 
-| Bảng | Grain | Dùng cho dashboard |
+| Bảng | độ hạt | Dùng cho báo cáo |
 |---|---|---|
 | `svg_bi.agg_revenue_daily_salon` | ngày × salon | Tổng quan doanh thu |
 | `svg_bi.agg_service_perf_monthly` | tháng × salon × dịch vụ | Hiệu quả dịch vụ |
 | `svg_bi.agg_therapist_utilization_daily` | ngày × KTV | Năng suất KTV |
 | `svg_bi.agg_customer_360` | 1 dòng = 1 khách | Chân dung khách hàng, đầu vào ML |
-| `svg_bi.agg_cohort_retention` | cohort tháng × tháng thứ N | Phân tích giữ chân khách |
+| `svg_bi.agg_cohort_retention` | nhóm theo tháng đến lần đầu × tháng thứ N | Phân tích giữ chân khách |
 | `svg_bi.agg_funnel_daily` | ngày | Phễu booking → treatment → payment |
 
 > ⚠️ **Ranh giới cần giữ nghiêm:** BI tool (Superset, Power BI) **chỉ được đọc** `dm` và `svg_bi`. Cấm truy cập `lnd`, `crt`, `ctl`.
@@ -362,7 +362,7 @@ Thứ tự ưu tiên gộp: `phone chuẩn hoá` → `email lowercase` → `(tê
 
 Đây là hộp vàng và hộp đỏ trong sơ đồ — nằm giữa `crt` và `dm`.
 
-**Cổng kiểm tra chất lượng là gì:** một bước có **quyền dừng luồng**. Rule nghiêm trọng thất bại → **dừng nhánh đó**, không đẩy dữ liệu bẩn vào datamart.
+**Cổng kiểm tra chất lượng là gì:** một bước có **quyền dừng luồng**. Quy tắc nghiêm trọng thất bại → **dừng nhánh đó**, không đẩy dữ liệu bẩn vào kho phân tích.
 
 **Nguyên tắc thiết kế cổng — "dừng nhánh", không "dừng cả hệ thống":**
 
@@ -381,9 +381,9 @@ flowchart TD
     classDef proc fill:#4c1d95,stroke:#a78bfa,color:#f5f3ff
 ```
 
-Nếu `fact_payment` bị chặn, `fact_feedback` vẫn phải được nạp bình thường. Dừng cả hệ thống vì một bảng lỗi là thiết kế kém — nó khiến team dần dần **tắt luôn cổng kiểm tra** để mọi thứ chạy được, và thế là mất tác dụng.
+Nếu `fact_payment` bị chặn, `fact_feedback` vẫn phải được nạp bình thường. Dừng cả hệ thống vì một bảng lỗi là thiết kế kém — nó khiến đội dần dần **tắt luôn cổng kiểm tra** để mọi thứ chạy được, và thế là mất tác dụng.
 
-**Vùng cách ly (Quarantine) là gì:** nơi giữ **những dòng lỗi** (không phải cả bảng), kèm lý do lỗi, chờ người xử lý.
+**Vùng cách ly (Vùng cách ly) là gì:** nơi giữ **những dòng lỗi** (không phải cả bảng), kèm lý do lỗi, chờ người xử lý.
 
 ```sql
 CREATE TABLE qtn.reject_row (
@@ -401,9 +401,9 @@ CREATE TABLE qtn.reject_row (
 );
 ```
 
-> **Quarantine phải có người sở hữu và SLA xử lý.** Vùng cách ly không có người rà sẽ tích luỹ dòng lỗi mà không ai định lượng được phần doanh thu bị bỏ sót. Đề xuất: báo cáo quarantine hằng ngày cho data owner, SLA xử lý 3 ngày làm việc.
+> **Vùng cách ly phải có người sở hữu và SLA xử lý.** Vùng cách ly không có người rà sẽ tích luỹ dòng lỗi mà không ai định lượng được phần doanh thu bị bỏ sót. Đề xuất: báo cáo vùng cách ly hằng ngày cho data owner, SLA xử lý 3 ngày làm việc.
 
-### Bảng thời gian thực (Real-time table)
+### Bảng thời gian thực
 
 Trong sơ đồ, đây là nhánh nét đứt đi **thẳng từ Kafka** sang, **không** qua Lake và **không** qua DWH.
 
@@ -412,7 +412,7 @@ Trong sơ đồ, đây là nhánh nét đứt đi **thẳng từ Kafka** sang, *
 | **Mục đích** | Vài số liệu cần xem ngay: số khách đang trong salon, doanh thu hôm nay tính đến giờ này, số booking mới trong 1 giờ |
 | **Vì sao đi đường riêng** | Đi qua Lake + DWH mất 15–60 phút. Vận hành cần con số của **5 phút trước** |
 | **Đặc tính đánh đổi** | **Nhanh nhưng gần đúng** — chưa đối soát, chưa qua cổng chất lượng |
-| **Nguyên tắc bắt buộc** | Dashboard real-time phải ghi rõ *"số liệu tạm tính, chưa đối soát"*. **Số chính thức luôn lấy từ datamart** |
+| **Nguyên tắc bắt buộc** | Báo cáo thời gian thực phải ghi rõ *"số liệu tạm tính, chưa đối soát"*. **Số chính thức luôn lấy từ kho phân tích** |
 
 ---
 
@@ -420,9 +420,9 @@ Trong sơ đồ, đây là nhánh nét đứt đi **thẳng từ Kafka** sang, *
 
 Airflow chịu trách nhiệm quyết định **cái gì chạy, khi nào chạy, chạy sau cái gì**, và xử lý khi có lỗi.
 
-cron chỉ biết "5h sáng chạy script A". Nó không biết A đã xong chưa mới chạy B, không tự retry, không backfill được 60 ngày lịch sử, không cho biết vì sao hôm qua thất bại.
+cron chỉ biết "5h sáng chạy script A". Nó không biết A đã xong chưa mới chạy B, không tự chạy lại, không backfill được 60 ngày lịch sử, không cho biết vì sao hôm qua thất bại.
 
-### Thiết kế DAG
+### Thiết kế luồng tác vụ
 
 | DAG | Lịch chạy | Nhiệm vụ | Phụ thuộc |
 |---|---|---|---|
@@ -431,7 +431,7 @@ cron chỉ biết "5h sáng chạy script A". Nó không biết A đã xong chư
 | `dag_ingest_master_daily` | 04:00 | Danh mục service/product/salon/employee | — |
 | `dag_lake_standardize` | 04:30 | Spark: raw → cleansed (6 bước chuẩn hoá) | 3 DAG trên |
 | `dag_load_dwh` | 05:00 | cleansed → `lnd` → `crt`, ghi watermark | `dag_lake_standardize` |
-| `dag_dq_gate` | 05:40 | Chạy toàn bộ DQ rule, quyết định pass/block | `dag_load_dwh` |
+| `dag_dq_gate` | 05:40 | Chạy toàn bộ DQ quy tắc, quyết định pass/block | `dag_load_dwh` |
 | `dag_build_datamart` | 06:00 | `crt` → `dim` (SCD2) → `fact` | `dag_dq_gate` |
 | `dag_refresh_svg_bi` | 06:40 | Dựng lại các bảng tổng hợp | `dag_build_datamart` |
 | `dag_iceberg_maintenance` | Chủ nhật 02:00 | Compact file, expire snapshot | — |
@@ -442,7 +442,7 @@ cron chỉ biết "5h sáng chạy script A". Nó không biết A đã xong chư
 2. **Task nhỏ, một việc.** Task 500 dòng code hỏng ở giữa thì phải chạy lại từ đầu.
 3. **Mọi task nhận `business_date` làm tham số** — điều kiện tiên quyết để backfill được.
 4. **Retry: 3 lần, giãn cách luỹ tiến** (2 phút → 4 phút → 8 phút) cho lỗi hạ tầng tạm thời.
-5. **Đặt SLA** — `dag_refresh_svg_bi` phải xong trước 08:00 (giờ business mở dashboard); trễ thì cảnh báo.
+5. **Đặt SLA** — `dag_refresh_svg_bi` phải xong trước 08:00 (giờ nghiệp vụ mở báo cáo); trễ thì cảnh báo.
 6. **Chỉ dùng `LatestOnlyOperator`** cho việc gửi thông báo, để backfill không spam 60 email.
 
 ---

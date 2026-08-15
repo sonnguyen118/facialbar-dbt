@@ -1,4 +1,4 @@
-# Star Schema, SCD và chuẩn hoá
+# Star schema, chiều thay đổi chậm và chuẩn hoá
 
 Mô hình chiều: Fact ở giữa, Dimension vây quanh. Cơ chế xử lý dimension thay đổi theo thời gian, và lý do hai tầng `crt` / `dm` theo hai triết lý chuẩn hoá ngược nhau.
 
@@ -47,7 +47,7 @@ flowchart TD
     classDef dim fill:#064e3b,stroke:#34d399,color:#ecfdf5
 ```
 
-### SCD — Slowly Changing Dimension (Chiều thay đổi chậm)
+### SCD — chiều thay đổi chậm
 
 SCD là cơ chế xử lý việc thuộc tính của một dimension bị thay đổi theo thời gian.
 
@@ -100,9 +100,9 @@ Fact tháng 1 trỏ vào `customer_sk = 8471` → mãi mãi là Silver. Fact th�
 
 > ⚠️ **Luôn tạo dòng `sk = -1` ("Unknown") trong mọi dimension.** Nếu không, fact thiếu khoá sẽ bị mất khi INNER JOIN → doanh thu bị hụt mà không có dấu vết.
 
-### Chốt định nghĩa KPI ngay tại Datamart
+### Chốt định nghĩa chỉ tiêu ngay tại Kho phân tích
 
-Sơ đồ ghi *"datamart star schema — Fact, dim, **chốt định nghĩa**"*. Nghĩa là: mỗi số đo chỉ được định nghĩa **một lần duy nhất** tại tầng này, không để mỗi dashboard tự tính lại.
+Sơ đồ ghi *"kho phân tích star schema — Fact, dim, **chốt định nghĩa**"*. Nghĩa là: mỗi số đo chỉ được định nghĩa **một lần duy nhất** tại tầng này, không để mỗi báo cáo tự tính lại.
 
 Trường hợp thường gặp: định nghĩa "Doanh thu".
 
@@ -113,7 +113,7 @@ Trường hợp thường gặp: định nghĩa "Doanh thu".
 | Net excl. VAT | `SUM(net_amount − tax_amount)` | Kế toán |
 | Cash collected | `SUM(payment.amount)` | Tài chính (dòng tiền) |
 
-→ Datamart phải có sẵn cả 4 cột với tên khác nhau rõ ràng, kèm định nghĩa trong data catalog. **Không** để tên chung chung là `revenue`.
+→ Kho phân tích phải có sẵn cả 4 cột với tên khác nhau rõ ràng, kèm định nghĩa trong data catalog. **Không** để tên chung chung là `revenue`.
 
 ---
 
@@ -123,7 +123,7 @@ Trường hợp thường gặp: định nghĩa "Doanh thu".
 
 Chuẩn hoá là việc sắp xếp cột vào bảng sao cho **mỗi dữ kiện chỉ được lưu ở đúng một chỗ**.
 
-hai tầng `crt` và `dm` trong sơ đồ được thiết kế theo **hai triết lý ngược nhau**. Nhầm lẫn giữa hai lớp sẽ dẫn tới làm `crt` giống `dm` (mất khả năng đối soát) hoặc làm `dm` giống `crt` (dashboard phải join 12 bảng, mở 30 giây).
+hai tầng `crt` và `dm` trong sơ đồ được thiết kế theo **hai triết lý ngược nhau**. Nhầm lẫn giữa hai lớp sẽ dẫn tới làm `crt` giống `dm` (mất khả năng đối soát) hoặc làm `dm` giống `crt` (báo cáo phải join 12 bảng, mở 30 giây).
 
 | Dạng chuẩn | Yêu cầu | Vi phạm thật ở Facial Bar | Hậu quả cụ thể |
 |---|---|---|---|
@@ -135,29 +135,29 @@ hai tầng `crt` và `dm` trong sơ đồ được thiết kế theo **hai tri�
 
 ### Hai tầng, hai triết lý — đây là quyết định thiết kế, không phải sự bất nhất
 
-| | `crt` (Curated) | `dm` (Datamart) |
+| | `crt` (Curated) | `dm` (Kho phân tích) |
 |---|---|---|
 | Mục tiêu | **Đúng**, đối soát được với nguồn | **Đọc nhanh**, người dùng tự hiểu |
 | Dạng chuẩn | **3NF** | **Cố ý phá 3NF** (denormalized) |
 | Số bảng phải join cho 1 báo cáo | 8–15 | 2–4 |
 | `city` được lưu ở đâu | Chỉ ở `crt.salon` | Nhân bản vào `dim_salon` **và** `dim_customer` |
 | Vì sao chấp nhận trùng lặp | — | Dimension chỉ vài nghìn dòng; đổi vài MB trùng lặp để bỏ hàng chục phép join |
-| Ai đảm bảo nhất quán | **Ràng buộc FK** của database | **Pipeline + DQ rule** (database không tự lo được) |
+| Ai đảm bảo nhất quán | **Ràng buộc FK** của database | **Đường ống dữ liệu + DQ quy tắc** (database không tự lo được) |
 
 > ⚠️ **Câu "denormalize cho nhanh" chỉ đúng với DIMENSION, không đúng với FACT.**
 > Denormalize fact (đưa `customer_name`, `salon_city` vào từng dòng hoá đơn) là sai vì: (1) fact có hàng trăm triệu dòng, nhân bản chuỗi ở đó làm bảng tăng dung lượng nhiều lần; (2) **mất luôn khả năng áp SCD2** — thuộc tính đã bị đóng băng cứng trong fact, không còn phiên bản nào để chọn.
 
 ### Một chỗ được phép "phá 1NF" có kiểm soát: quan hệ nhiều-nhiều trong fact
 
-Vấn đề thật: một hoá đơn có thể áp **đồng thời 2 khuyến mãi** (giảm 20% sinh nhật + tặng kèm mask). Fact có grain 1 dòng = 1 dòng hoá đơn, nhưng lại cần trỏ tới **nhiều** promotion.
+Vấn đề thật: một hoá đơn có thể áp **đồng thời 2 khuyến mãi** (giảm 20% sinh nhật + tặng kèm mask). Fact có độ hạt 1 dòng = 1 dòng hoá đơn, nhưng lại cần trỏ tới **nhiều** promotion.
 
 Ba cách xử lý, và lý do chọn:
 
 | Cách | Làm gì | Vấn đề |
 |---|---|---|
-| Nhân dòng fact | 1 dòng hoá đơn × 2 promotion = 2 dòng | ❌ **Phá grain** → `SUM(net_amount)` bị nhân đôi |
+| Nhân dòng fact | 1 dòng hoá đơn × 2 promotion = 2 dòng | ❌ **Phá độ hạt** → `SUM(net_amount)` bị nhân đôi |
 | Nhồi vào 1 cột | `promotion_ids = '3,7'` | ❌ Phá 1NF, không lọc/join được |
-| **Bridge table + hệ số phân bổ** | Bảng cầu nối riêng, có `allocation_factor` cộng lại bằng 1 | ✅ Giữ nguyên grain fact, phân tích được theo promotion |
+| **Bridge table + hệ số phân bổ** | Bảng cầu nối riêng, có `allocation_factor` cộng lại bằng 1 | ✅ Giữ nguyên độ hạt fact, phân tích được theo promotion |
 
 → Chọn cách 3. DDL của `bridge_sales_promotion` nằm ở [03-ddl/05-svg-bi.md mục 1](../03-ddl/05-svg-bi.md); bảng nguồn là [`crt.invoice_line_promotion`](../03-ddl/02-crt.md).
 

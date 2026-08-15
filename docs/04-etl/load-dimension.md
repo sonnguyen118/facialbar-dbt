@@ -112,7 +112,7 @@ END
 
 Thủ tục này **idempotent**: chạy lại với cùng dữ liệu nguồn thì bước 1 không tìm thấy chênh lệch hash → không làm gì cả.
 
-### Kiểm tra tính đúng đắn của SCD2 — DQ rule bắt buộc
+### Kiểm tra tính đúng đắn của SCD2 — DQ quy tắc bắt buộc
 
 ```sql
 -- DQ-SCD-001: không được có KHOẢNG HỞ hoặc KHOẢNG CHỒNG trong lịch sử một khách
@@ -133,7 +133,7 @@ GROUP  BY customer_id
 HAVING COUNT(*) <> 1;
 ```
 
-Không có hai rule này thì lỗi SCD2 sẽ âm thầm làm **nhân đôi dòng fact** khi temporal join, và biểu hiện ra ngoài là "doanh thu tự nhiên tăng gấp đôi ở vài khách hàng".
+Không có hai quy tắc này thì lỗi SCD2 sẽ âm thầm làm **nhân đôi dòng fact** khi temporal join, và biểu hiện ra ngoài là "doanh thu tự nhiên tăng gấp đôi ở vài khách hàng".
 
 ### Nạp fact
 

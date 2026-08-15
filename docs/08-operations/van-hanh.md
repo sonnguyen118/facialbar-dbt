@@ -2,11 +2,11 @@
 
 Lựa chọn công nghệ kèm lý do, bảo mật đầu-cuối, chất lượng dữ liệu, quản trị dữ liệu, giám sát, khả năng mở rộng và phục hồi.
 
-Catalog quy tắc chất lượng: [../05-quality/dq-rules.md](../05-quality/dq-rules.md).
+danh mục quy tắc chất lượng: [../05-quality/dq-rules.md](../05-quality/dq-rules.md).
 
 
 
-> Trả lời: Hệ thống dùng công nghệ gì? An toàn thế nào? Data có đáng tin không? Ai được truy cập? Có giám sát không? Scale thế nào? Khi hỏng thì xử lý ra sao?
+> Trả lời: Hệ thống dùng công nghệ gì? An toàn thế nào? Dữ liệu có đáng tin không? Ai được truy cập? Có giám sát không? Scale thế nào? Khi hỏng thì xử lý ra sao?
 
 ## 1. Lựa chọn công nghệ
 
@@ -14,15 +14,15 @@ Catalog quy tắc chất lượng: [../05-quality/dq-rules.md](../05-quality/dq-
 
 | Lớp | Công nghệ | Requirement nào dẫn tới lựa chọn này | Đã cân nhắc gì khác |
 |---|---|---|---|
-| Điều phối | **Airflow** | Cần phụ thuộc phức tạp, backfill, retry, quan sát được | Dagster (tốt hơn về data-aware nhưng team chưa quen) |
-| Streaming | **Kafka + Schema Registry** | Event app cần gần real-time, cần replay, cần kiểm soát schema | Kinesis (khoá vào AWS, replay khó hơn) |
+| Điều phối | **Airflow** | Cần phụ thuộc phức tạp, backfill, chạy lại, quan sát được | Dagster (tốt hơn về data-aware nhưng đội chưa quen) |
+| Streaming | **Kafka + Schema Registry** | Sự kiện app cần gần thời gian thực, cần replay, cần kiểm soát schema | Kinesis (khoá vào AWS, replay khó hơn) |
 | CDC | **Debezium** | Cần bắt cả DELETE và trạng thái trung gian từ OLTP | Batch incremental (không bắt được DELETE) |
-| Sink | **Kafka Connect S3** | Đưa event xuống Lake, phân vùng ngày, không cần viết code | Spark Streaming (phải tự vận hành nhiều hơn) |
+| Sink | **Kafka Connect S3** | Đưa sự kiện xuống Lake, phân vùng ngày, không cần viết code | Spark Streaming (phải tự vận hành nhiều hơn) |
 | Lake | **Amazon S3** | Rẻ, không giới hạn dung lượng, tách lưu trữ khỏi tính toán | HDFS (phải tự quản cluster) |
 | Table format | **Apache Iceberg** | Cần ACID, schema evolution, time travel trên S3 | Delta Lake, Hudi (đều được; chọn Iceberg vì trung lập engine) |
 | Xử lý | **Spark (hoặc AWS Glue)** | Khối lượng lớn, có sẵn kỹ năng SQL/Python | dbt + engine SQL (tốt cho transform trong DWH) |
 | Warehouse | **SQL Server** | Team đã thành thạo T-SQL, Power BI kết nối tự nhiên, có sẵn license | Snowflake/BigQuery (mạnh hơn nhưng đổi chi phí và kỹ năng) |
-| BI | **Superset + Power BI** | Superset cho nội bộ data team; Power BI cho business | Metabase, Tableau |
+| BI | **Superset + Power BI** | Superset cho nội bộ data đội; Power BI cho nghiệp vụ | Metabase, Tableau |
 | Real-time serving | **Đọc thẳng từ Kafka** | Chỉ cần vài chỉ số vận hành, không cần join phức tạp | ClickHouse/Druid (thêm khi số use case tăng) |
 
 > **Ghi lại lý do dưới dạng ADR (Architecture Decision Record).** Mỗi quyết định 1 trang: bối cảnh, các phương án, lựa chọn, hệ quả. Sáu tháng sau sẽ có người hỏi *"vì sao lại dùng SQL Server?"* — không có ADR thì câu trả lời chỉ còn là ký ức của người đã rời công ty.
@@ -47,16 +47,20 @@ Catalog quy tắc chất lượng: [../05-quality/dq-rules.md](../05-quality/dq-
 
 ### Bảng vai trò truy cập
 
+Đ = chỉ đọc · ĐG = đọc và ghi · — = không có quyền
+
 | Vai trò | `raw` | `cleansed` | `lnd` | `crt` | `dm` | `svg_bi` | `ctl` | `qtn` |
 |---|---|---|---|---|---|---|---|---|
-| Data Engineer | RW | RW | RW | RW | RW | RW | RW | RW |
-| Data Analyst | — | R | — | R | R | R | R | R |
-| BI Developer | — | — | — | — | R | R | — | — |
-| Business User | — | — | — | — | — | R (qua BI) | — | — |
-| Data Scientist | — | R | — | R | R | R | — | — |
-| Auditor | R | R | — | R | R | R | R | R |
+| Kỹ sư dữ liệu | ĐG | ĐG | ĐG | ĐG | ĐG | ĐG | ĐG | ĐG |
+| Chuyên viên phân tích | — | Đ | — | Đ | Đ | Đ | Đ | Đ |
+| Người làm báo cáo | — | — | — | — | Đ | Đ | — | — |
+| Người dùng nghiệp vụ | — | — | — | — | — | Đ, qua công cụ báo cáo | — | — |
+| Chuyên viên khoa học dữ liệu | — | Đ | — | Đ | Đ | Đ | — | — |
+| Kiểm toán | Đ | Đ | — | Đ | Đ | Đ | Đ | Đ |
 
-### Xử lý PII (Personally Identifiable Information)
+**Quy tắc bắt buộc:** công cụ báo cáo chỉ đọc lớp đã qua cổng kiểm tra chất lượng, tức `dm` và `svg_bi`. Ngoại lệ duy nhất là bảng điều khiển vận hành dữ liệu được đọc `ctl` và view `qtn.v_quarantine_summary`.
+
+### Xử lý thông tin định danh cá nhân
 
 Facial Bar lưu **dữ liệu sức khoẻ/thẩm mỹ** (loại da, tình trạng da, ảnh trước–sau) — thuộc loại dữ liệu **cảm nhạy**, mức bảo vệ phải cao hơn dữ liệu thường.
 
@@ -64,7 +68,7 @@ Facial Bar lưu **dữ liệu sức khoẻ/thẩm mỹ** (loại da, tình trạ
 |---|---|---|
 | `phone`, `email`, `full_name` | PII | Mã hoá cột; analyst thấy bản đã che (`090****567`) |
 | `date_of_birth` | PII | Chỉ phơi ra `age_group`, không phơi ngày sinh |
-| `skin_condition`, ảnh trước/sau | Cảm nhạy | Bucket riêng, quyền riêng, mặc định **không** đưa vào datamart |
+| `skin_condition`, ảnh trước/sau | Cảm nhạy | Bucket riêng, quyền riêng, mặc định **không** đưa vào kho phân tích |
 | `payment_card_no` | PCI | **Không lưu**. Chỉ lưu token từ gateway + 4 số cuối |
 
 **Quyền được xoá (Right to be forgotten):** khách yêu cầu xoá dữ liệu → cần một quy trình chạy được trên **cả** Lake và DWH. Đây là lý do kỹ thuật rất thực tế để dùng Iceberg ở tầng cleansed: `DELETE FROM ... WHERE customer_id = ?` là chuyện bất khả thi với file Parquet thuần trên S3.
@@ -73,12 +77,12 @@ Facial Bar lưu **dữ liệu sức khoẻ/thẩm mỹ** (loại da, tình trạ
 
 ## 3. Chất lượng dữ liệu — sáu tiêu chí
 
-Data Quality là tập các phép kiểm tra tự động để phát hiện dữ liệu sai **trước khi** business dùng nó ra quyết định.
+chất lượng dữ liệu là tập các phép kiểm tra tự động để phát hiện dữ liệu sai **trước khi** nghiệp vụ dùng nó ra quyết định.
 
-| Chiều | Câu hỏi | Ví dụ rule Facial Bar | Mức |
+| Chiều | Câu hỏi | Ví dụ quy tắc Facial Bar | Mức |
 |---|---|---|---|
 | **Completeness** (Đầy đủ) | Có thiếu data không? | Mọi salon đang mở phải có ≥ 1 hoá đơn/ngày; `customer_id` không NULL | BLOCK |
-| **Accuracy** (Chính xác) | Data có hợp lý không? | `net_amount >= 0`; `actual_duration` trong khoảng 15–240 phút; `rating` từ 1–5 | BLOCK |
+| **Accuracy** (Chính xác) | Dữ liệu có hợp lý không? | `net_amount >= 0`; `actual_duration` trong khoảng 15–240 phút; `rating` từ 1–5 | BLOCK |
 | **Consistency** (Nhất quán) | Các hệ thống có khớp nhau? | `SUM(POS revenue)` = `SUM(crt revenue)` ± 0,1%; tổng payment = tổng invoice | BLOCK |
 | **Uniqueness** (Duy nhất) | Có trùng lặp không? | `invoice_line_id` duy nhất; 1 khách không có 2 appointment chồng giờ | BLOCK |
 | **Validity** (Hợp lệ) | Đúng định dạng/miền giá trị? | `phone` khớp E.164; `booking_status` nằm trong danh mục; FK tồn tại | WARN/BLOCK |
@@ -106,7 +110,7 @@ flowchart TD
     classDef ctlbox fill:#1f2937,stroke:#9ca3af,color:#f9fafb
 ```
 
-### Rule nào chạy ở tầng nào
+### Quy tắc nào chạy ở tầng nào
 
 | Tầng | Loại kiểm tra | Ví dụ |
 |---|---|---|
@@ -134,15 +138,15 @@ flowchart TD
 
 ## 4. Quản trị dữ liệu
 
-Trả lời 3 câu hỏi — *Data này là gì? Ai sở hữu? Được sử dụng thế nào?*
+Trả lời 3 câu hỏi — *Dữ liệu này là gì? Ai sở hữu? Được sử dụng thế nào?*
 
 | Thành phần | Định nghĩa | Cách làm ở Facial Bar |
 |---|---|---|
-| **Data Catalog** | Danh mục tra cứu mọi bảng/cột | Mỗi bảng: mô tả, **grain**, owner, SLA, nguồn; mỗi cột: ý nghĩa, đơn vị, miền giá trị |
-| **Data Dictionary** | Định nghĩa chính thức của từng KPI | "Net Revenue = SUM(net_amount) từ `fact_sales_line`, ghi nhận theo ngày dịch vụ" |
-| **Data Lineage** | Dữ liệu đi từ đâu đến đâu | POS.invoice → raw → cleansed → lnd → crt → fact_sales_line → agg_revenue_daily → chart |
-| **Data Ownership** | Ai chịu trách nhiệm | Mỗi domain 1 **Business Owner** (đúng/sai nghiệp vụ) + 1 **Technical Owner** (pipeline chạy) |
-| **Data Classification** | Mức độ mật | Public / Internal / Confidential / PII / Sensitive |
+| **danh mục dữ liệu** | Danh mục tra cứu mọi bảng/cột | Mỗi bảng: mô tả, **độ hạt**, owner, SLA, nguồn; mỗi cột: ý nghĩa, đơn vị, miền giá trị |
+| **từ điển dữ liệu** | Định nghĩa chính thức của từng chỉ tiêu | "Net Revenue = SUM(net_amount) từ `fact_sales_line`, ghi nhận theo ngày dịch vụ" |
+| **truy vết nguồn gốc dữ liệu** | Dữ liệu đi từ đâu đến đâu | POS.invoice → raw → cleansed → lnd → crt → fact_sales_line → agg_revenue_daily → chart |
+| **quyền sở hữu dữ liệu** | Ai chịu trách nhiệm | Mỗi domain 1 **Nghiệp vụ Owner** (đúng/sai nghiệp vụ) + 1 **Technical Owner** (đường ống dữ liệu chạy) |
+| **phân loại dữ liệu** | Mức độ mật | Public / Internal / Confidential / PII / Sensitive |
 | **Retention Policy** | Giữ bao lâu | raw 3 năm → Glacier; cleansed 5 năm; DWH đầy đủ 7 năm (tuân thủ kế toán) |
 | **Change Management** | Đổi schema thì làm sao | Thông báo trước 2 tuần; kiểm tra tương thích ngược; ghi vào changelog |
 
@@ -152,15 +156,15 @@ khi một số liệu sai, lineage cho biết **bảng nào bị ảnh hưởng*
 
 ## 5. Giám sát
 
-Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và phải trả lời được **trước khi** business phát hiện ra.
+Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và phải trả lời được **trước khi** nghiệp vụ phát hiện ra.
 
 | Cấp | Đo cái gì | Ví dụ chỉ số | Ngưỡng cảnh báo |
 |---|---|---|---|
 | **Hạ tầng** | Máy còn sống không | CPU, RAM, dung lượng đĩa, Kafka consumer lag | Lag > 100.000 message |
-| **Pipeline** | Job có chạy đúng không | Tỷ lệ thành công, thời gian chạy, số lần retry | Thất bại 2 lần liên tiếp |
-| **Dữ liệu** | Dữ liệu có đúng không | Tỷ lệ DQ pass, số dòng quarantine, độ trễ dữ liệu | DQ pass < 99% |
+| **Đường ống dữ liệu** | Job có chạy đúng không | Tỷ lệ thành công, thời gian chạy, số lần chạy lại | Thất bại 2 lần liên tiếp |
+| **Dữ liệu** | Dữ liệu có đúng không | Tỷ lệ DQ pass, số dòng vùng cách ly, độ trễ dữ liệu | DQ pass < 99% |
 | **Nghiệp vụ** | Số liệu có bất thường không | Doanh thu hôm nay so với 7 ngày trước | Lệch > 30% |
-| **Sử dụng** | Ai đang dùng gì | Lượt xem dashboard, bảng không ai truy vấn 90 ngày | — |
+| **Sử dụng** | Ai đang dùng gì | Lượt xem báo cáo, bảng không ai truy vấn 90 ngày | — |
 
 **Ba khái niệm cần phân biệt:**
 
@@ -170,14 +174,14 @@ Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và p
 | **Observability** | Khả năng **truy vấn để hiểu** vấn đề chưa từng gặp | "Vì sao doanh thu salon Q7 hôm qua bằng 0?" |
 | **Alerting** | Chủ động thông báo khi vượt ngưỡng | Slack `#data-alerts` |
 
-**Quy tắc thiết kế cảnh báo:** mỗi cảnh báo phải **có người nhận, có việc phải làm**. Cảnh báo mà không ai xử lý được sẽ dẫn tới *alert fatigue* — team tắt thông báo, và cảnh báo thật sẽ bị bỏ lọt.
+**Quy tắc thiết kế cảnh báo:** mỗi cảnh báo phải **có người nhận, có việc phải làm**. Cảnh báo mà không ai xử lý được sẽ dẫn tới *alert fatigue* — đội tắt thông báo, và cảnh báo thật sẽ bị bỏ lọt.
 
 | Mức | Ví dụ | Nhận qua | Ai xử lý |
 |---|---|---|---|
-| **P1 – Nghiêm trọng** | Pipeline doanh thu hỏng, DQ chặn | Gọi điện + Slack | Kỹ sư dữ liệu trực |
-| **P2 – Cao** | Trễ SLA, quarantine > 1% | Slack | Chủ sở hữu domain |
-| **P3 – Trung bình** | Rule WARN thất bại | Email hằng ngày | Phân tích dữ liệu |
-| **P4 – Thấp** | Bảng không ai dùng | Báo cáo hằng tuần | Data governance |
+| **P1 – Nghiêm trọng** | Đường ống dữ liệu doanh thu hỏng, DQ chặn | Gọi điện + Slack | Kỹ sư dữ liệu trực |
+| **P2 – Cao** | Trễ SLA, vùng cách ly > 1% | Slack | Chủ sở hữu domain |
+| **P3 – Trung bình** | Quy tắc WARN thất bại | Email hằng ngày | Phân tích dữ liệu |
+| **P4 – Thấp** | Bảng không ai dùng | Báo cáo hằng tuần | quản trị dữ liệu |
 
 ---
 
@@ -191,7 +195,7 @@ Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và p
 | **S3** | Bài toán file nhỏ | Compact định kỳ; nâng ngưỡng ghi của Kafka Connect |
 | **Spark** | Thời gian xử lý | Tách job theo domain; phân vùng theo ngày; đọc tăng trưởng, không đọc lại toàn bộ |
 | **SQL Server** | Đây là điểm nghẽn **cứng** đầu tiên | Xem bên dưới |
-| **BI** | Dashboard chậm | Tổng hợp trước ở `svg_bi`; giới hạn khoảng thời gian mặc định |
+| **BI** | Báo cáo chậm | Tổng hợp trước ở `svg_bi`; giới hạn khoảng thời gian mặc định |
 
 ### Kế hoạch xử lý điểm nghẽn SQL Server
 
@@ -209,14 +213,14 @@ Trả lời câu hỏi *"Hệ thống có đang chạy tốt không?"* — và p
 | Sự cố | Phát hiện bằng | Cách khôi phục |
 |---|---|---|
 | Nguồn không gửi dữ liệu | DQ Freshness thất bại | Chạy lại DAG khi nguồn phục hồi; watermark đảm bảo không mất, không trùng |
-| Spark job dừng bất thường | Airflow task fail | Iceberg ACID nên không có dữ liệu ghi dở → retry an toàn |
-| SQL Server không nạp được | Task load fail | Dữ liệu vẫn nằm ở `cleansed`, retry hoặc REPLAY từ `archive` |
+| Spark job dừng bất thường | Airflow task không đạt | Iceberg ACID nên không có dữ liệu ghi dở → chạy lại an toàn |
+| SQL Server không nạp được | Task load không đạt | Dữ liệu vẫn nằm ở `cleansed`, chạy lại hoặc REPLAY từ `archive` |
 | Logic transform sai | Đối soát lệch | Sửa code → backfill từ `archive`/`cleansed` → nhờ idempotent nên số liệu đúng lại |
 | Nạp trùng | DQ Uniqueness thất bại | `ctl.load_audit` (file_hash) chặn từ đầu; nếu đã vào thì delete-insert lại phân vùng |
 | Kafka mất dữ liệu | Consumer lag + đối soát | Replay từ offset trong retention 7 ngày |
 | Xoá bảng nhầm | Cảnh báo | Restore DB backup; hoặc dựng lại từ Lake (nhánh nét đứt trong sơ đồ) |
 
-**Chỉ tiêu cần chốt với business:**
+**Chỉ tiêu cần chốt với nghiệp vụ:**
 
 | Chỉ tiêu | Định nghĩa | Mục tiêu đề xuất |
 |---|---|---|

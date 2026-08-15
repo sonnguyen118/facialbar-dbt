@@ -87,7 +87,7 @@ Chú thích màu, nguyên văn trong ảnh: *Tím là bước xử lý, xanh lá
 
 **Quyết định:** mỗi loại dữ liệu chỉ định **đúng một** hệ thống là nguồn chân lý. Thiếu quy định này thì khi hai hệ thống lệch số, không có căn cứ phân xử.
 
-**Ranh giới:** hệ thống ở vị thế **chỉ đọc** với POS và cơ sở dữ liệu ứng dụng — không can thiệp, không đổi được schema nguồn.
+**Ranh giới:** hệ thống ở vị thế **chỉ đọc** với POS và cơ sở dữ liệu ứng dụng — không can thiệp, không ghi ngược. Thiết kế của cơ sở dữ liệu ứng dụng nằm ở [Thiet-Ke-DB-WebApp.md](Thiet-Ke-DB-WebApp.md); phần đưa dữ liệu sang kho ở mục 7 của tài liệu đó.
 
 → [4 nhóm nguồn và ánh xạ theo thực thể](docs/06-platform/nguon-va-thu-nap.md#1-bốn-nhóm-nguồn)
 
@@ -123,13 +123,13 @@ Hai nhánh trong sơ đồ — theo lô và qua Kafka — tách thành 3 cơ ch�
 | **Raw** | Bản gốc từ nguồn | Như nguồn, gzip | **Bất biến** — file đã ghi không sửa |
 | **Chuẩn hoá** | Bước xử lý bằng Spark hoặc Glue | — | 6 bước, xem dưới |
 | **Cleansed** | Bản dùng được cho hạ nguồn | Parquet + Snappy, Iceberg | Đã ép kiểu, đã khử trùng lặp |
-| **Archive** | File đã nạp xong vào SQL Server | Như raw | Phục vụ dựng lại pipeline |
+| **Archive** | File đã nạp xong vào SQL Server | Như raw | Phục vụ dựng lại đường ống dữ liệu |
 
 **Sáu bước chuẩn hoá, theo đúng thứ tự:** kiểm tra cấu trúc → ép kiểu → chuẩn tên cột → khử trùng lặp CDC → chạy quy tắc chất lượng → ghi Parquet.
 
-**Quyết định — nguyên tắc bất biến ở `raw`.** Đây là điều kiện cho 3 việc: chứng minh nguồn đã gửi gì (kiểm toán), chạy lại pipeline tháng trước ra đúng kết quả tháng trước, và sửa lỗi code rồi nạp lại từ đầu. Ghi đè file gốc là mất cả ba.
+**Quyết định — nguyên tắc bất biến ở `raw`.** Đây là điều kiện cho 3 việc: chứng minh nguồn đã gửi gì (kiểm toán), chạy lại đường ống dữ liệu của tháng trước ra đúng kết quả tháng trước, và sửa lỗi code rồi nạp lại từ đầu. Ghi đè file gốc là mất cả ba.
 
-**Archive không phải backup database.** Backup phục hồi trạng thái database về thời điểm T; Archive cho phép **chạy lại pipeline** khi logic biến đổi sai. Hai thứ khác nhau, không thay thế nhau.
+**Archive không phải backup database.** Backup phục hồi trạng thái database về thời điểm T; Archive cho phép **chạy lại đường ống dữ liệu** khi logic biến đổi sai. Hai thứ khác nhau, không thay thế nhau.
 
 → [Phân vùng hồ dữ liệu, Iceberg, bảo trì](docs/06-platform/ho-du-lieu-va-kho.md#1-hồ-dữ-liệu-s3)
 
@@ -165,7 +165,7 @@ Bảy thành phần: 4 tầng dữ liệu, 1 cổng kiểm tra chất lượng, 
 | 5.4 | `qtn`, vùng cách ly | 1 + 1 view | Giữ dòng lỗi chờ xử lý | Dữ liệu, chủ sở hữu dữ liệu nghiệp vụ |
 | 5.5 | `dm`, kho phân tích | 13 dim + 10 Fact + 1 cầu nối | **Chốt định nghĩa chỉ tiêu** | Dữ liệu, Phân tích |
 | 5.6 | `svg_bi`, phục vụ BI | 6 | Bảng tổng hợp sẵn | Toàn bộ qua công cụ báo cáo |
-| 5.7 | `ctl`, bảng điều khiển | 8 | Trạng thái pipeline | Dữ liệu |
+| 5.7 | `ctl`, bảng điều khiển | 8 | Trạng thái đường ống dữ liệu | Dữ liệu |
 
 ### 5.1. `lnd` — *Heap, ghi đè, không lịch sử*
 
@@ -282,7 +282,7 @@ Trong sơ đồ gốc, Airflow là hộp chú thích đặt trên cùng, không 
 
 | Luồng | Trong ảnh | Mục đích |
 |---|---|---|
-| Nạp và kiểm soát → Archive | Có | Lưu file đã nạp để dựng lại pipeline |
+| Nạp và kiểm soát → Archive | Có | Lưu file đã nạp để dựng lại đường ống dữ liệu |
 | Nạp và kiểm soát → Bảng điều khiển | Có | Ghi `run_id`, watermark, trạng thái |
 | Kafka → Bảng thời gian thực | Có | Nhánh riêng cho chỉ số vận hành tức thời |
 | Vùng cách ly → nạp lại | **Không** | Dòng lỗi sau khi sửa phải quay lại đường nạp |
@@ -307,7 +307,7 @@ Luồng thứ tư không có trong sơ đồ gốc nhưng bắt buộc phải c�
 
 Khối dữ liệu lớn nhất là sự kiện ứng dụng và nó nằm ở hồ dữ liệu — đây chính là lý do kiến trúc tách hai tầng lưu trữ thay vì chỉ dùng SQL Server hoặc chỉ dùng S3.
 
-→ [Dự toán số dòng và dung lượng](docs/03-ddl/00-init.md#6-volumetrics--dự-toán-số-dòng-và-dung-lượng)
+→ [Dự toán số dòng và dung lượng](docs/03-ddl/00-init.md#6-dự-toán-số-dòng-và-dung-lượng)
 
 ---
 

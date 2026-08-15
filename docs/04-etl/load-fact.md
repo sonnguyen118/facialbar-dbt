@@ -136,7 +136,7 @@ END
 
 Cùng khuôn, khác nguồn và cột chốt kỳ:
 
-| Fact | Nguồn `crt` | Cột chốt kỳ | Khoá grain |
+| Fact | Nguồn `crt` | Cột chốt kỳ | Khoá độ hạt |
 |---|---|---|---|
 | `fact_payment` | `payment` | `paid_at` | `payment_id` |
 | `fact_booking_line` | `booking_item` + `booking` | `booked_at` | `booking_item_id` |
@@ -487,7 +487,7 @@ END
 
 ## 5. Làm mới bảng tổng hợp `svg_bi`
 
-Toàn bộ dùng delete-insert theo khoá grain. Chạy trong `dag_refresh_svg_bi` sau khi `dm` đã nạp xong.
+Toàn bộ dùng delete-insert theo khoá độ hạt. Chạy trong `dag_refresh_svg_bi` sau khi `dm` đã nạp xong.
 
 ```sql
 CREATE OR ALTER PROCEDURE svg_bi.usp_refresh_agg_revenue_daily_salon
@@ -553,17 +553,17 @@ BEGIN
 END
 ```
 
-> **Đây là ví dụ chuẩn của *drilling across*.** Năm fact khác grain được **tổng hợp riêng về cùng grain `ngày × salon`** rồi mới `LEFT JOIN`. Join trực tiếp năm fact với nhau sẽ nhân dòng và làm doanh thu sai gấp nhiều lần.
+> **Đây là ví dụ chuẩn của *drilling across*.** Năm fact khác độ hạt được **tổng hợp riêng về cùng độ hạt `ngày × salon`** rồi mới `LEFT JOIN`. Join trực tiếp năm fact với nhau sẽ nhân dòng và làm doanh thu sai gấp nhiều lần.
 
 Năm bảng tổng hợp còn lại theo cùng nguyên tắc:
 
-| Bảng | Grain đích | Nguồn | Chu kỳ |
+| Bảng | độ hạt đích | Nguồn | Chu kỳ |
 |---|---|---|---|
 | `agg_funnel_daily` | ngày × salon | `fact_booking_lifecycle`, `crt.service_view` | Hằng ngày |
 | `agg_therapist_utilization_daily` | ngày × KTV | `fact_treatment`, `fact_sales_line`, `fact_feedback` | Hằng ngày |
 | `agg_service_perf_monthly` | tháng × salon × dịch vụ | `fact_sales_line`, `fact_treatment`, `fact_feedback` | Hằng ngày, nạp lại tháng hiện tại |
 | `agg_customer_360` | 1 khách | Nhiều fact | Hằng ngày, dựng lại toàn bộ |
-| `agg_cohort_retention` | cohort × tháng thứ N | `fact_sales_line` | Hằng tuần |
+| `agg_cohort_retention` | nhóm theo tháng đến lần đầu × tháng thứ N | `fact_sales_line` | Hằng tuần |
 
 ---
 

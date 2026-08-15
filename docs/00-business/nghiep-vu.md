@@ -26,7 +26,7 @@ flowchart LR
     MB -.->|"Vòng lặp giữ chân khách"| M
 ```
 
-hành trình khách hàng là thứ **duy nhất** mà cả CEO, marketing, lễ tân và data team đều hiểu giống nhau. Mọi bảng dữ liệu sau này phải trả lời được một chặng nào đó trên hành trình này. Bảng nào không thuộc chặng nào → nghi vấn: có thực sự cần không?
+hành trình khách hàng là thứ **duy nhất** mà cả CEO, marketing, lễ tân và data đội đều hiểu giống nhau. Mọi bảng dữ liệu sau này phải trả lời được một chặng nào đó trên hành trình này. Bảng nào không thuộc chặng nào → nghi vấn: có thực sự cần không?
 
 Chú ý mũi tên nét đứt cuối cùng: đây là **closed-loop** — dữ liệu đầu ra (feedback, hạng thành viên) trở thành đầu vào cho marketing chặng sau. Đây là lý do platform cần dữ liệu lịch sử, không chỉ dữ liệu hiện tại.
 
@@ -34,10 +34,10 @@ Chú ý mũi tên nét đứt cuối cùng: đây là **closed-loop** — dữ l
 
 ## 2. Miền nghiệp vụ
 
-Domain là một nhóm khái niệm nghiệp vụ có cùng chủ đề, do cùng một nhóm người chịu trách nhiệm.
-Domain là cơ sở để chia schema, chia quyền truy cập, chia người sở hữu dữ liệu (data owner). Không chia domain → sau này 200 bảng nằm lẫn lộn trong 1 schema, không ai biết bảng nào của ai.
+Miền nghiệp vụ là một nhóm khái niệm nghiệp vụ có cùng chủ đề, do cùng một nhóm người chịu trách nhiệm.
+Miền nghiệp vụ là cơ sở để chia schema, chia quyền truy cập, chia người sở hữu dữ liệu (data owner). Không chia domain → sau này 200 bảng nằm lẫn lộn trong 1 schema, không ai biết bảng nào của ai.
 
-| # | Domain | Câu hỏi nghiệp vụ nó trả lời | Bản chất | Chủ sở hữu (Owner) |
+| # | Miền nghiệp vụ | Câu hỏi nghiệp vụ nó trả lời | Bản chất | Chủ sở hữu (Owner) |
 |---|---|---|---|---|
 | 1 | **Customer** | Ai là khách? Mới hay cũ? Đã quay lại mấy lần? | Master | CRM / Marketing |
 | 2 | **Salon / Store** | Có bao nhiêu chi nhánh? Ở đâu? Quy mô nào? | Master | Vận hành |
@@ -56,7 +56,7 @@ Domain là cơ sở để chia schema, chia quyền truy cập, chia người s�
 
 ### Phân loại Master và Transaction
 
-| | **Master Data** (Dữ liệu chủ) | **Transaction Data** (Dữ liệu giao dịch) |
+| | **Dữ liệu chủ** | **Dữ liệu giao dịch** (Dữ liệu giao dịch) |
 |---|---|---|
 | **Là gì** | Mô tả **một thứ tồn tại** | Ghi lại **một việc đã xảy ra** |
 | Ví dụ | Khách hàng Lan, Salon Q1, dịch vụ Hydrafacial | Lan đặt lịch lúc 14:00 ngày 12/08 |
@@ -75,13 +75,13 @@ Tiêu chí phân loại: mô tả chứa động từ thể hoàn thành ("đã 
 |---|---|---|---|
 | Định nghĩa | **Ý định** của khách | **Lịch hẹn** đã xếp | **Việc đã làm** thật |
 | Thời điểm | Khi khách bấm "Đặt lịch" | Khi hệ thống xếp KTV + buồng + giờ | Khi KTV thực hiện xong |
-| Có thể huỷ? | Có | Có (kèm no-show) | Không (đã làm rồi) |
+| Có thể huỷ? | Có | Có (kèm khách không đến) | Không (đã làm rồi) |
 | Sinh doanh thu? | **Không** | **Không** | **Có** (qua Payment) |
 
 Ba bảng tách rời vì quan hệ giữa chúng không phải một-một:
 - 1 booking có thể tách thành **nhiều** appointment (khách đặt combo 3 buổi).
-- 1 appointment có thể sinh **nhiều** treatment (đến làm facial, lễ tân up-sell thêm massage cổ vai gáy).
-- 1 appointment có thể sinh **0** treatment (khách no-show).
+- 1 appointment có thể sinh **nhiều** treatment (đến làm facial, lễ tân bán thêm tại chỗ thêm massage cổ vai gáy).
+- 1 appointment có thể sinh **0** treatment (khách khách không đến).
 
 Nếu gộp làm một bảng → không thể tính được **tỷ lệ khách không đến** và **tỷ lệ bán thêm tại chỗ**, là hai chỉ tiêu vận hành quan trọng nhất của chuỗi.
 
@@ -89,19 +89,19 @@ Nếu gộp làm một bảng → không thể tính được **tỷ lệ khách
 
 ## 3. Quy trình nghiệp vụ
 
-Process là một chuỗi bước nghiệp vụ có điểm bắt đầu, điểm kết thúc và một mục tiêu kinh doanh rõ ràng.
-Process cho biết **thứ tự phụ thuộc** giữa các bảng → quyết định thứ tự nạp dữ liệu trong pipeline (không thể nạp `payment` trước khi có `treatment`).
+Quy trình là một chuỗi bước nghiệp vụ có điểm bắt đầu, điểm kết thúc và một mục tiêu kinh doanh rõ ràng.
+Quy trình cho biết **thứ tự phụ thuộc** giữa các bảng → quyết định thứ tự nạp dữ liệu trong đường ống dữ liệu (không thể nạp `payment` trước khi có `treatment`).
 
-| # | Process | Mục tiêu | Domain tham gia | KPI chính |
+| # | Quy trình | Mục tiêu | Miền nghiệp vụ tham gia | chỉ tiêu chính |
 |---|---|---|---|---|
 | 1 | **Customer Acquisition** | Thu hút khách mới | Marketing, Customer, Promotion | CAC, ROAS, số khách mới |
-| 2 | **Booking & Appointment** | Khách đặt được lịch | Customer, Service, Salon, Employee, Booking, Appointment | Tỷ lệ chốt lịch, no-show |
+| 2 | **Booking & Appointment** | Khách đặt được lịch | Customer, Service, Salon, Employee, Booking, Appointment | Tỷ lệ chốt lịch, khách không đến |
 | 3 | **Treatment** | Thực hiện dịch vụ | Appointment, Employee, Treatment, Service, Product | Năng suất kỹ thuật viên, tỷ lệ bán thêm, thời gian phục vụ |
 | 4 | **Payment & Sales** | Thu tiền | Treatment, Product, Promotion, Payment, Membership | Revenue, ATV, tỷ lệ giảm giá |
 | 5 | **Loyalty & Membership** | Giữ chân khách | Customer, Payment, Loyalty, Membership | Tỷ lệ nâng hạng, điểm tiêu/tích |
-| 6 | **Customer Retention** | Khiến khách quay lại | Toàn bộ (closed-loop) | Repeat rate, CLV, churn |
+| 6 | **Customer Retention** | Khiến khách quay lại | Toàn bộ (closed-loop) | Repeat rate, CLV, khách rời bỏ |
 
-> Process 6 không có bảng riêng — nó là **kết quả** của 5 process trước. Đây là dấu hiệu tốt: process phân tích thường không sinh bảng nguồn mới, mà sinh **bảng tổng hợp** ở tầng datamart.
+> Quy trình 6 không có bảng riêng — nó là **kết quả** của 5 process trước. Đây là dấu hiệu tốt: process phân tích thường không sinh bảng nguồn mới, mà sinh **bảng tổng hợp** ở tầng kho phân tích.
 
 ---
 
@@ -124,16 +124,16 @@ Process cho biết **thứ tự phụ thuộc** giữa các bảng → quyết �
 | 9 | Khách hài lòng ở mức nào, và điểm thấp tập trung ở chi nhánh hay ở kỹ thuật viên? | Chăm sóc khách hàng, Vận hành | Mức độ hài lòng (CSAT) | `fact_feedback` | Đủ |
 | 10 | Khách hạng cao có thực sự chi nhiều hơn đủ để bù phần giảm giá của hạng đó? | Chăm sóc khách hàng, Tài chính | Giá trị vòng đời khách hàng, Tỷ lệ nâng hạng thẻ | `dim_customer`, `fact_customer_monthly_snapshot` | **Chờ Kế toán cấp cách tính giá vốn** |
 
-**Bốn câu chưa trả lời được ngay** — số 1, 5, 6, 10 — đều vì thiếu dữ liệu từ bên ngoài, không vì thiếu thiết kế. Danh sách bên cung cấp và hạn chót nằm ở [bản trình phê duyệt mục 11](../../Ban-Thiet-Ke-CSDL.md#11-rủi-ro-và-biện-pháp-kiểm-soát).
+**Bốn câu chưa trả lời được ngay** — số 1, 5, 6, 10 — đều vì thiếu dữ liệu từ bên ngoài, không vì thiếu thiết kế. Danh sách bên cung cấp và hạn chót nằm ở [bản trình phê duyệt mục 11](../../Ban-Thiet-Ke-CSDL.md#6-rủi-ro-và-điều-kiện-tiên-quyết).
 
 ---
 
 ## 4. Sự kiện nghiệp vụ
 
-Event là một việc đã xảy ra tại một thời điểm xác định, không thể thay đổi được nữa.
-Event chính là **hạt dữ liệu nhỏ nhất** của hệ thống. Có event → tái dựng được toàn bộ lịch sử. Chỉ có bảng trạng thái hiện tại → mất vĩnh viễn thông tin "khách đã từng huỷ 3 lần trước khi đến".
+Sự kiện là một việc đã xảy ra tại một thời điểm xác định, không thể thay đổi được nữa.
+Sự kiện chính là **hạt dữ liệu nhỏ nhất** của hệ thống. Có sự kiện → tái dựng được toàn bộ lịch sử. Chỉ có bảng trạng thái hiện tại → mất vĩnh viễn thông tin "khách đã từng huỷ 3 lần trước khi đến".
 
-### Quy ước đặt tên event
+### Quy ước đặt tên sự kiện
 `<domain>_<động từ quá khứ>` — luôn dùng thể **đã hoàn thành**, chữ thường, gạch dưới.
 
 ✅ `booking_created`, `payment_completed`
@@ -141,7 +141,7 @@ Event chính là **hạt dữ liệu nhỏ nhất** của hệ thống. Có even
 
 ### Danh mục sự kiện
 
-| Domain | Event | Ý nghĩa nghiệp vụ | Thuộc tính then chốt |
+| Miền nghiệp vụ | Sự kiện | Ý nghĩa nghiệp vụ | Thuộc tính then chốt |
 |---|---|---|---|
 | Customer | `customer_registered` | Khách tạo tài khoản | customer_id, channel, referral_code |
 | | `customer_updated` | Sửa thông tin | customer_id, field_changed |
@@ -174,15 +174,15 @@ Event chính là **hạt dữ liệu nhỏ nhất** của hệ thống. Có even
 
 | Trường | Kiểu | Vai trò | Vì sao bắt buộc |
 |---|---|---|---|
-| `event_id` | UUID | Khoá duy nhất của event | Để **khử trùng lặp** — Kafka có thể gửi 1 event 2 lần |
-| `event_name` | string | Tên event | Định tuyến xử lý |
+| `event_id` | UUID | Khoá duy nhất của sự kiện | Để **khử trùng lặp** — Kafka có thể gửi 1 sự kiện 2 lần |
+| `event_name` | string | Tên sự kiện | Định tuyến xử lý |
 | `event_version` | int | Phiên bản schema | Để đổi schema không làm vỡ downstream |
 | `occurred_at` | timestamp (UTC) | **Lúc việc xảy ra thật** | Dùng để tính toán nghiệp vụ |
 | `received_at` | timestamp (UTC) | Lúc hệ thống nhận được | Dùng để đo độ trễ, phát hiện late data |
 | `source_system` | string | `pos` / `app` / `web` / `ga4` | Truy vết nguồn gốc |
 | `entity_id` | string | ID đối tượng chính | Dùng làm Kafka partition key |
 
-> ⚠️ **Phân biệt `occurred_at` và `received_at`.** Khách check-in ở salon lúc 23:50 ngày 13/08 nhưng mạng lỗi, event về server 00:10 ngày 14/08. Nếu báo cáo dùng `received_at` → doanh thu ngày 13 bị hụt, ngày 14 bị dôi. **Luôn phân vùng lưu trữ theo `received_at`, nhưng tính toán nghiệp vụ theo `occurred_at`.**
+> ⚠️ **Phân biệt `occurred_at` và `received_at`.** Khách check-in ở salon lúc 23:50 ngày 13/08 nhưng mạng lỗi, sự kiện về server 00:10 ngày 14/08. Nếu báo cáo dùng `received_at` → doanh thu ngày 13 bị hụt, ngày 14 bị dôi. **Luôn phân vùng lưu trữ theo `received_at`, nhưng tính toán nghiệp vụ theo `occurred_at`.**
 
 ---
 
@@ -211,15 +211,15 @@ flowchart TD
 
 > **Điểm quan trọng mà bản phác thảo ban đầu chưa có: các nhánh THẤT BẠI.**
 > Luồng "happy path" chỉ là 1 trong nhiều kết cục. Phân tích kinh doanh giá trị nhất nằm ở nhánh thất bại: *tại sao 30% booking bị huỷ?*
-> Vì vậy mô hình dữ liệu **phải lưu cả event thất bại**, không chỉ event thành công. Nếu POS chỉ ghi booking thành công → mất vĩnh viễn khả năng phân tích huỷ lịch.
+> Vì vậy mô hình dữ liệu **phải lưu cả sự kiện thất bại**, không chỉ sự kiện thành công. Nếu POS chỉ ghi booking thành công → mất vĩnh viễn khả năng phân tích huỷ lịch.
 
 ### Ba khái niệm cốt lõi
 
 | Khái niệm | Câu hỏi | Ví dụ Facial Bar |
 |---|---|---|
-| **Domain** | Có những đối tượng nghiệp vụ nào? | Customer, Salon, Booking, Payment |
-| **Process** | Chúng vận hành với nhau thế nào? | Customer → Booking → Treatment → Payment |
-| **Event** | Trong quá trình đó chuyện gì xảy ra? | `booking_created` → `treatment_completed` → `payment_completed` |
+| **Miền nghiệp vụ** | Có những đối tượng nghiệp vụ nào? | Customer, Salon, Booking, Payment |
+| **Quy trình** | Chúng vận hành với nhau thế nào? | Customer → Booking → Treatment → Payment |
+| **Sự kiện** | Trong quá trình đó chuyện gì xảy ra? | `booking_created` → `treatment_completed` → `payment_completed` |
 
 ---
 ---

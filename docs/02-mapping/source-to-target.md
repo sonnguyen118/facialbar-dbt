@@ -12,7 +12,7 @@ Bảng tra cứu ở mức cột: mỗi cột đích lấy từ nguồn nào, bi
 |---|---|
 | **Nguồn** | Hệ thống · bảng/topic · cột |
 | **Biến đổi** | Phép biến đổi áp dụng. `1:1` = copy nguyên |
-| **Khi NULL/thiếu** | Giá trị thay thế. `-1` = Unknown member, `FAIL` = chặn dòng vào quarantine |
+| **Khi NULL/thiếu** | Giá trị thay thế. `-1` = Unknown member, `FAIL` = chặn dòng vào vùng cách ly |
 | **DQ** | Mã quy tắc kiểm tra áp lên cột này |
 
 **Ký hiệu hệ thống nguồn:**
@@ -21,7 +21,7 @@ Bảng tra cứu ở mức cột: mỗi cột đích lấy từ nguồn nào, bi
 |---|---|---|
 | `POS` | POS tại cửa hàng | Batch/CDC → `raw/pos/` |
 | `OLTP` | DB ứng dụng đặt lịch | CDC (Debezium) → `raw/cdc/` |
-| `APP` | Event từ app/web | Streaming (Kafka) → `raw/kafka/` |
+| `APP` | Sự kiện từ app/web | Streaming (Kafka) → `raw/kafka/` |
 | `GW` | Cổng thanh toán | API batch → `raw/gateway/` |
 | `ADS` | Facebook / Google Ads | API batch → `raw/ads/` |
 | `GA4` | Google Analytics 4 | Export batch → `raw/ga4/` |
@@ -33,7 +33,7 @@ Bảng tra cứu ở mức cột: mỗi cột đích lấy từ nguồn nào, bi
 
 ## 1. `crt.customer` ← nhiều nguồn
 
-Grain: 1 dòng = 1 khách hàng đã gộp định danh.
+độ hạt: 1 dòng = 1 khách hàng đã gộp định danh.
 
 | Cột đích | Nguồn | Biến đổi | Khi NULL/thiếu | DQ |
 |---|---|---|---|---|
@@ -53,7 +53,7 @@ Grain: 1 dòng = 1 khách hàng đã gộp định danh.
 
 ## 2. `crt.customer_identity_map` ← nhiều nguồn
 
-Grain: 1 dòng = 1 danh tính ở 1 hệ thống nguồn.
+độ hạt: 1 dòng = 1 danh tính ở 1 hệ thống nguồn.
 
 | Cột đích | Nguồn | Biến đổi | Khi NULL/thiếu | DQ |
 |---|---|---|---|---|
@@ -133,7 +133,7 @@ Grain: 1 dòng = 1 danh tính ở 1 hệ thống nguồn.
 | `discount_amount` | `OLTP.booking_line.discount` | `DECIMAL(18,2)` | `0` | |
 | `line_amount` | `DWH` | `quantity * unit_price - discount_amount` | — | DQ-BKG-005 |
 
-> Nguồn chân lý của `booking` là `OLTP`. Event từ `APP` **không** dùng để tạo dòng, chỉ dùng để đối chiếu và đo độ trễ giữa lúc khách bấm và lúc dữ liệu về kho.
+> Nguồn chân lý của `booking` là `OLTP`. Sự kiện từ `APP` **không** dùng để tạo dòng, chỉ dùng để đối chiếu và đo độ trễ giữa lúc khách bấm và lúc dữ liệu về kho.
 
 ## 7. `crt.appointment` ← `POS`
 
@@ -165,7 +165,7 @@ Grain: 1 dòng = 1 danh tính ở 1 hệ thống nguồn.
 | `overrun_minutes` | `DWH` | `MAX(0, busy_minutes - standard_minutes)` | `0` |
 | `is_upsell` | `DWH` | `1` nếu `service_id` **không** có trong `booking_item` của booking tương ứng | `0` |
 
-> `available_minutes` là mẫu số của Therapist Utilization, phải lấy từ **lịch làm việc**, không suy từ giờ mở cửa salon. Không có lịch làm việc thì chỉ số này không tính được — cần Vận hành cung cấp.
+> `available_minutes` là mẫu số của Therapist Năng suất, phải lấy từ **lịch làm việc**, không suy từ giờ mở cửa salon. Không có lịch làm việc thì chỉ số này không tính được — cần Vận hành cung cấp.
 
 ## 9. `crt.invoice` + `crt.invoice_line` ← `POS`
 
@@ -180,7 +180,7 @@ Grain: 1 dòng = 1 danh tính ở 1 hệ thống nguồn.
 | `service_at` | `POS.invoice.service_date` | UTC. **Cột chốt kỳ doanh thu** | Dùng `invoiced_at` nếu thiếu | DQ-INV-003 |
 | `invoiced_at` | `POS.invoice.created_at` | UTC | `FAIL` | |
 | `invoice_status` | `POS.invoice.status` | `paid` / `unpaid` / `void` | `FAIL` | |
-| `invoice_line_id` | `POS.invoice_line.id` | `1:1`. **Định nghĩa grain** | `FAIL` | DQ-UNIQ-001 |
+| `invoice_line_id` | `POS.invoice_line.id` | `1:1`. **Định nghĩa độ hạt** | `FAIL` | DQ-UNIQ-001 |
 | `invoice_line_no` | `POS.invoice_line.seq` | `SMALLINT` | Số thứ tự tự sinh | |
 | `line_type` | `POS.invoice_line.item_type` | `service` / `product` | `FAIL` | DQ-INV-004 |
 | `service_id` | `POS.invoice_line.item_id` khi `line_type='service'` | `1:1` | `-1` | |
@@ -290,11 +290,11 @@ Grain: 1 dòng = 1 danh tính ở 1 hệ thống nguồn.
 | `viewed_at` | `APP.service_viewed.occurred_at` | UTC | `FAIL` |
 | `duration_sec` | `APP.service_viewed.duration_sec` | `INT` | `0` |
 
-> Khối lượng lớn (~2,5 triệu dòng/năm ở 20 salon). Chỉ dùng ở mức tổng hợp cho phễu chuyển đổi. Quyết định có nạp vào SQL Server hay giữ ở Iceberg thuộc Sprint 7.
+> Khối lượng lớn (~2,5 triệu dòng/năm ở 20 salon). Chỉ dùng ở mức tổng hợp cho phễu chuyển đổi. Quyết định có nạp vào SQL Server hay giữ ở Iceberg thuộc Giai đoạn 7.
 
 ---
 
-## Mapping `crt` → `dm`
+## Ánh xạ `crt` sang `dm`
 
 Phần lớn là tra khoá đại diện. Ba dạng biến đổi cần nêu rõ:
 
@@ -370,7 +370,7 @@ Các cột sau **không** lấy từ hệ thống nguồn, phải tính trong kh
 | `is_vn_holiday`, `is_tet_season` | `dim_date` | Từ `ctl.vn_holiday`, nạp thủ công mỗi năm | Không có công thức — Tết theo âm lịch |
 | `available_minutes` | `fact_treatment` | Từ lịch làm việc KTV | **Cần Vận hành cung cấp lịch làm việc** |
 | `days_since_last_visit` | `agg_customer_360` | `DATEDIFF` từ hoá đơn gần nhất tới ngày chạy | Tính lại mỗi ngày |
-| `churn_probability`, `predicted_clv_amount` | `agg_customer_360` | Kết quả mô hình ML | Sprint 8 |
+| `churn_probability`, `predicted_clv_amount` | `agg_customer_360` | Kết quả mô hình ML | Giai đoạn 8 |
 
 ---
 
@@ -380,7 +380,7 @@ Ba dữ liệu dưới đây **chưa có nguồn** và sẽ chặn các chỉ s�
 
 | Dữ liệu cần | Chặn chỉ số nào | Bên cung cấp |
 |---|---|---|
-| Lịch làm việc / phân ca KTV | Therapist Utilization, Bed Occupancy | Vận hành |
+| Lịch làm việc / phân ca KTV | Therapist Năng suất, Bed Occupancy | Vận hành |
 | Giờ mở cửa từng salon theo ngày | Bed Occupancy | Vận hành |
 | Cách tính COGS dịch vụ | Gross Margin, CLV | Kế toán |
 | Danh mục ngày lễ và ngày nghỉ bù từng năm | So sánh cùng kỳ, dự báo nhu cầu | Nhân sự / Hành chính |

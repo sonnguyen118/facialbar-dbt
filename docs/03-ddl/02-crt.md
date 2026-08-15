@@ -1,6 +1,6 @@
-# DDL — Schema `crt` (Curated)
+# DDL — Schema `crt`, tầng đối soát
 
-Tầng đối soát. Mô hình **3NF**, giữ đúng grain của nguồn, chưa áp business logic. Đây là tầng dùng để phân xử khi số liệu lệch: nếu `crt` khớp POS thì lỗi nằm ở `dm`; nếu `crt` lệch POS thì lỗi nằm ở ingestion.
+Tầng đối soát. Mô hình **3NF**, giữ đúng độ hạt của nguồn, chưa áp quy tắc nghiệp vụ. Đây là tầng dùng để phân xử khi số liệu lệch: nếu `crt` khớp POS thì lỗi nằm ở `dm`; nếu `crt` lệch POS thì lỗi nằm ở thu nạp.
 
 Nguồn dữ liệu và phép biến đổi từng cột: [Source-to-Target Mapping](../02-mapping/source-to-target.md).
 
@@ -11,7 +11,7 @@ Nguồn dữ liệu và phép biến đổi từng cột: [Source-to-Target Mapp
 | Hạng mục | Quy tắc |
 |---|---|
 | Dạng chuẩn | 3NF — mỗi dữ kiện lưu ở đúng một chỗ |
-| Khoá chính | Business key của hệ thống nguồn, `CLUSTERED` |
+| Khoá chính | Nghiệp vụ key của hệ thống nguồn, `CLUSTERED` |
 | Khoá ngoại | Enforced. Thứ tự nạp: master trước, transaction sau |
 | Kiểu dữ liệu | Đã ép đúng kiểu (khác `lnd` để rộng) |
 | Timestamp | `DATETIME2(3)`, **UTC** |
@@ -547,7 +547,7 @@ CREATE INDEX IX_crt_invoice_line_treatment  ON crt.invoice_line (treatment_id)
     WHERE treatment_id IS NOT NULL;
 ```
 
-> Bốn `CHECK` về số tiền (`gross`, `disc`, `net`, `margin`) là hàng rào chặn lỗi tính toán ngay tại tầng `crt`, trước khi số liệu đi vào datamart. Dòng vi phạm bị đẩy sang [`qtn.reject_row`](06-ctl-qtn.md).
+> Bốn `CHECK` về số tiền (`gross`, `disc`, `net`, `margin`) là hàng rào chặn lỗi tính toán ngay tại tầng `crt`, trước khi số liệu đi vào kho phân tích. Dòng vi phạm bị đẩy sang [`qtn.reject_row`](06-ctl-qtn.md).
 
 ### `crt.payment` + `crt.payment_allocation`
 
@@ -772,7 +772,7 @@ CREATE INDEX IX_crt_sv_viewed  ON crt.service_view (viewed_at) INCLUDE (service_
 CREATE INDEX IX_crt_sv_session ON crt.service_view (session_id);
 ```
 
-> Không đặt FK tới `crt.customer` vì `customer_id = -1` với khách chưa đăng nhập. Toàn vẹn kiểm bằng DQ rule.
+> Không đặt FK tới `crt.customer` vì `customer_id = -1` với khách chưa đăng nhập. Toàn vẹn kiểm bằng DQ quy tắc.
 
 ---
 
@@ -848,7 +848,7 @@ Thứ tự **xoá** khi dựng lại: đảo ngược danh sách trên.
 
 ## Danh mục bảng
 
-| # | Bảng | Loại | Grain | Nguồn chính |
+| # | Bảng | Loại | độ hạt | Nguồn chính |
 |---|---|---|---|---|
 | 1 | `crt.customer` | Master | 1 khách đã gộp định danh | OLTP + POS |
 | 2 | `crt.customer_identity_map` | Master | 1 danh tính ở 1 hệ thống | Nhiều nguồn |

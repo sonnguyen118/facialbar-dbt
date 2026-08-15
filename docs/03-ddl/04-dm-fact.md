@@ -2,7 +2,7 @@
 
 10 fact table đủ 3 loại: transaction, periodic snapshot, accumulating snapshot. Bảng cầu nối `dm.bridge_sales_promotion` nằm ở [05-svg-bi.md mục 1](05-svg-bi.md).
 
-Grain từng bảng: [01-erd/grain.md](../01-erd/grain.md). Dimension nào dùng cho fact nào: [01-erd/bus-matrix.md](../01-erd/bus-matrix.md). Quy trình nạp: [04-etl/load-fact.md](../04-etl/load-fact.md).
+độ hạt từng bảng: [01-erd/độ hạt.md](../01-erd/độ hạt.md). Dimension nào dùng cho fact nào: [01-erd/bus-matrix.md](../01-erd/bus-matrix.md). Quy trình nạp: [04-etl/load-fact.md](../04-etl/load-fact.md).
 
 
 
@@ -89,9 +89,9 @@ CREATE UNIQUE INDEX UX_fact_sales_line_grain
 
 **1. `service_date_key` làm khoá phân vùng, không phải `invoice_date_key`.** Nghiệp vụ ghi nhận doanh thu **theo ngày dịch vụ được thực hiện** (mục 4.3), nên hầu hết truy vấn lọc theo cột này. Phân vùng phải theo cột được lọc nhiều nhất, nếu không thì partition pruning vô dụng.
 
-**2. `net_amount` được lưu vật lý, không dùng computed column.** Có thể khai báo `AS (gross_amount - discount_amount) PERSISTED`, nhưng chọn cách lưu vật lý + `CHECK` + DQ rule vì: (a) khi debug thấy ngay giá trị ETL đã tính; (b) không lệ thuộc cú pháp riêng của SQL Server, nhất quán với yêu cầu giữ chi phí di trú thấp ở [mục 7.6](../08-operations/van-hanh.md#6-khả-năng-mở-rộng-và-phục-hồi).
+**2. `net_amount` được lưu vật lý, không dùng computed column.** Có thể khai báo `AS (gross_amount - discount_amount) PERSISTED`, nhưng chọn cách lưu vật lý + `CHECK` + DQ quy tắc vì: (a) khi debug thấy ngay giá trị ETL đã tính; (b) không lệ thuộc cú pháp riêng của SQL Server, nhất quán với yêu cầu giữ chi phí di trú thấp ở [mục 7.6](../08-operations/van-hanh.md#6-khả-năng-mở-rộng-và-phục-hồi).
 
-**3. Cột `line_count` luôn bằng 1.** Đây là *counting fact*. Cần nói rõ nó **không** giải quyết vấn đề grain: ở mức dòng thì `SUM(line_count)` và `COUNT(*)` cho **kết quả y hệt nhau** — cả hai đều đếm số dòng hoá đơn, không đếm số hoá đơn. Muốn đếm số hoá đơn vẫn phải `COUNT(DISTINCT invoice_no)`.
+**3. Cột `line_count` luôn bằng 1.** Đây là *counting fact*. Cần nói rõ nó **không** giải quyết vấn đề độ hạt: ở mức dòng thì `SUM(line_count)` và `COUNT(*)` cho **kết quả y hệt nhau** — cả hai đều đếm số dòng hoá đơn, không đếm số hoá đơn. Muốn đếm số hoá đơn vẫn phải `COUNT(DISTINCT invoice_no)`.
 
 Lý do thật để có cột này chỉ có hai:
 - Bảng tổng hợp ở `svg_bi` cần **cộng tiếp** số đếm từ mức ngày lên mức tháng — lúc đó `SUM` là phép duy nhất dùng được, `COUNT(*)` trên bảng đã tổng hợp sẽ ra số dòng của bảng tổng hợp, không phải số hoá đơn.
@@ -478,6 +478,6 @@ CREATE TABLE dm.fact_customer_monthly_snapshot (
 );
 ```
 
-> ⚠️ **Cảnh báo dùng sai đã được đưa vào chính tên cột:** `point_balance` là semi-additive. `SUM(point_balance)` qua nhiều tháng cho ra số vô nghĩa; phải lọc `WHERE year_month = 202608`. Ghi rõ điều này vào Data Catalog cho bảng này là **bắt buộc**, không phải khuyến nghị.
+> ⚠️ **Cảnh báo dùng sai đã được đưa vào chính tên cột:** `point_balance` là semi-additive. `SUM(point_balance)` qua nhiều tháng cho ra số vô nghĩa; phải lọc `WHERE year_month = 202608`. Ghi rõ điều này vào danh mục dữ liệu cho bảng này là **bắt buộc**, không phải khuyến nghị.
 
 ---

@@ -1,4 +1,4 @@
-# Đặc tả thiết kế — Facial Bar Data Platform
+# Đặc tả thiết kế — Facial Bar
 
 Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê duyệt: [../Ban-Thiet-Ke-CSDL.md](../Ban-Thiet-Ke-CSDL.md)
 
@@ -29,7 +29,7 @@ Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê 
 | 3 | [01-erd/](01-erd/) | Hiểu mô hình dữ liệu và độ hạt từng bảng |
 | 4 | [02-mapping/source-to-target.md](02-mapping/source-to-target.md) | Biết từng cột lấy từ đâu, biến đổi ra sao |
 | 5 | [03-ddl/00-init.md](03-ddl/00-init.md) → [06-ctl-qtn.md](03-ddl/06-ctl-qtn.md) | Dựng database theo đúng thứ tự |
-| 6 | [04-etl/seed.md](04-etl/seed.md) | Nạp dữ liệu khởi tạo **trước** khi chạy pipeline |
+| 6 | [04-etl/seed.md](04-etl/seed.md) | Nạp dữ liệu khởi tạo **trước** khi chạy đường ống dữ liệu |
 | 7 | [05-quality/dq-rules.md](05-quality/dq-rules.md) | Nạp catalog quy tắc, cấu hình cổng kiểm tra |
 | 8 | [04-etl/load-dimension.md](04-etl/load-dimension.md) → [load-fact.md](04-etl/load-fact.md) | Viết quy trình nạp |
 
@@ -39,7 +39,7 @@ Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê 
 |---|---|
 | [00-business/nghiep-vu.md](00-business/nghiep-vu.md) | Hành trình khách hàng, miền nghiệp vụ, quy trình, sự kiện và thuộc tính bắt buộc |
 | [01-erd/erd-logic.md](01-erd/erd-logic.md) | Thực thể master và transaction, ba loại khoá, ERD, cardinality, xử lý quan hệ nhiều-nhiều |
-| [01-erd/grain.md](01-erd/grain.md) | Khai báo độ hạt toàn bộ bảng, double counting, fan-out, additivity |
+| [01-erd/độ hạt.md](01-erd/độ hạt.md) | Khai báo độ hạt toàn bộ bảng, double counting, fan-out, additivity |
 | [01-erd/star-schema.md](01-erd/star-schema.md) | Fact và dim, ba loại Fact, SCD, dim đặc biệt, chuẩn hoá và phi chuẩn hoá |
 | [01-erd/bus-matrix.md](01-erd/bus-matrix.md) | Ma trận Fact × dim, conformed dimension, drilling across |
 | [02-mapping/source-to-target.md](02-mapping/source-to-target.md) | Mapping mức cột: 15 mục, phủ 19 trong 26 bảng `crt`, mapping `crt → dm`, ánh xạ danh mục, cột tính trong kho |
@@ -72,7 +72,7 @@ Tài liệu luồng tổng thể: [../Flow.md](../Flow.md) · Bản trình phê 
 | `ctl` + `qtn` — 9 bảng + 1 view | Xong |
 | Ánh xạ nguồn sang đích | Xong |
 | Script khởi tạo | Xong |
-| Catalog quy tắc chất lượng — 58 quy tắc | Xong |
+| danh mục quy tắc chất lượng — 58 quy tắc | Xong |
 | Quy trình nạp — 10 procedure mẫu, đủ khuôn cho 23 bảng | Xong |
 
 ### Hai bảng chưa thiết kế chi tiết

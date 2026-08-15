@@ -92,8 +92,8 @@ Nhóm quan trọng nhất: đây là các quy tắc bảo vệ tiêu chí nghi�
 |---|---|---|---|---|---|
 | `DQ-RECON-001` | `crt.invoice_line` ↔ POS | Doanh thu thuần theo ngày × salon | lệch ≤ 0,1% | `BLOCK` | Tài chính |
 | `DQ-RECON-002` | `crt.payment` ↔ cổng thanh toán | Tiền thực thu theo ngày | lệch ≤ 0,1% | `BLOCK` | Tài chính |
-| `DQ-RECON-003` | `dm.fact_sales_line` ↔ `crt.invoice_line` | Doanh thu theo ngày × salon | lệch = 0 | `BLOCK` | Data |
-| `DQ-RECON-004` | `svg_bi.agg_revenue_daily_salon` ↔ `dm.fact_sales_line` | Doanh thu theo ngày × salon | lệch = 0 | `BLOCK` | Data |
+| `DQ-RECON-003` | `dm.fact_sales_line` ↔ `crt.invoice_line` | Doanh thu theo ngày × salon | lệch = 0 | `BLOCK` | Dữ liệu |
+| `DQ-RECON-004` | `svg_bi.agg_revenue_daily_salon` ↔ `dm.fact_sales_line` | Doanh thu theo ngày × salon | lệch = 0 | `BLOCK` | Dữ liệu |
 | `DQ-PAY-004` | `crt.payment_allocation` | Tổng phân bổ = `payment_amount` | lệch ≤ 1 đồng | `BLOCK` | Tài chính |
 | `DQ-PAY-005` | `crt.payment` ↔ `crt.invoice` | Tổng thanh toán ≤ tổng hoá đơn | ≤ 0,5% | `WARN` | Tài chính |
 
@@ -139,11 +139,11 @@ HAVING ABS(p.payment_amount - SUM(a.allocated_amount)) > 1;
 
 | Mã | Đối tượng | Kiểm tra | Ngưỡng | Mức | Chủ |
 |---|---|---|---|---|---|
-| `DQ-UNIQ-001` | `dm.fact_sales_line` | `invoice_line_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Data |
-| `DQ-UNIQ-002` | `dm.fact_payment` | `payment_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Data |
-| `DQ-UNIQ-003` | `dm.fact_treatment` | `treatment_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Data |
-| `DQ-UNIQ-004` | `dm.fact_booking_line` | `booking_item_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Data |
-| `DQ-UNIQ-005` | `dm.fact_appointment` | `appointment_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Data |
+| `DQ-UNIQ-001` | `dm.fact_sales_line` | `invoice_line_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Dữ liệu |
+| `DQ-UNIQ-002` | `dm.fact_payment` | `payment_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Dữ liệu |
+| `DQ-UNIQ-003` | `dm.fact_treatment` | `treatment_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Dữ liệu |
+| `DQ-UNIQ-004` | `dm.fact_booking_line` | `booking_item_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Dữ liệu |
+| `DQ-UNIQ-005` | `dm.fact_appointment` | `appointment_id` duy nhất toàn cục | 0 trùng | `BLOCK` | Dữ liệu |
 | `DQ-APT-001` | `crt.appointment` | Một KTV không có 2 lịch hẹn chồng giờ | 0 vi phạm | `BLOCK` | Vận hành |
 | `DQ-APT-002` | `crt.appointment` | Một buồng không có 2 lịch hẹn chồng giờ | 0 vi phạm | `BLOCK` | Vận hành |
 | `DQ-MEM-001` | `crt.membership_subscription` | Kỳ thành viên của cùng khách không chồng nhau | 0 vi phạm | `BLOCK` | CRM |
@@ -192,8 +192,8 @@ WHERE  m1._is_deleted = 0 AND m2._is_deleted = 0;
 | `DQ-CUS-007` | `crt.customer_identity_map` | `match_confidence < 0,80` phải có `reviewed_by` | 0 vi phạm | `BLOCK` | CRM |
 | `DQ-BKG-003` | `crt.booking` | `booking_status` thuộc danh mục | 0 vi phạm | `BLOCK` | Vận hành |
 | `DQ-INV-004` | `crt.invoice_line` | `line_type` là `service` hoặc `product`, và có đúng một trong hai ID | 0 vi phạm | `BLOCK` | Vận hành |
-| `DQ-MAP-001` | `ctl.code_mapping` | Không có giá trị nguồn nào bị ánh xạ về `UNKNOWN` | ≤ 1% | `WARN` | Data |
-| `DQ-FK-001` | `dm.fact_*` | Tỷ lệ dòng fact trỏ `sk = -1` | ≤ 1% | `WARN` | Data |
+| `DQ-MAP-001` | `ctl.code_mapping` | Không có giá trị nguồn nào bị ánh xạ về `UNKNOWN` | ≤ 1% | `WARN` | Dữ liệu |
+| `DQ-FK-001` | `dm.fact_*` | Tỷ lệ dòng fact trỏ `sk = -1` | ≤ 1% | `WARN` | Dữ liệu |
 | `DQ-FK-002` | `dm.fact_sales_line` | Tỷ lệ dòng trỏ `customer_sk = -1` | ≤ 5% | `WARN` | CRM |
 
 ```sql
@@ -224,11 +224,11 @@ WHERE  c.acquisition_channel = 'UNKNOWN'
 
 | Mã | Đối tượng | Kiểm tra | Ngưỡng | Mức | Chủ |
 |---|---|---|---|---|---|
-| `DQ-FRESH-001` | `crt.invoice` | Dữ liệu ngày N có trước 06:00 ngày N+1 | 0 trễ | `BLOCK` | Data |
-| `DQ-FRESH-002` | `crt.payment` | Như trên | 0 trễ | `BLOCK` | Data |
-| `DQ-FRESH-003` | `svg_bi.agg_revenue_daily_salon` | Làm mới xong trước 08:00 | 0 trễ | `BLOCK` | Data |
+| `DQ-FRESH-001` | `crt.invoice` | Dữ liệu ngày N có trước 06:00 ngày N+1 | 0 trễ | `BLOCK` | Dữ liệu |
+| `DQ-FRESH-002` | `crt.payment` | Như trên | 0 trễ | `BLOCK` | Dữ liệu |
+| `DQ-FRESH-003` | `svg_bi.agg_revenue_daily_salon` | Làm mới xong trước 08:00 | 0 trễ | `BLOCK` | Dữ liệu |
 | `DQ-FRESH-004` | `crt.ad_spend` | Dữ liệu 7 ngày gần nhất được nạp lại mỗi lần chạy | 0 thiếu | `WARN` | Marketing |
-| `DQ-FRESH-005` | Kafka | Consumer lag của `cg-s3-sink` | ≤ 100.000 message | `WARN` | Data |
+| `DQ-FRESH-005` | Kafka | Consumer lag của `cg-s3-sink` | ≤ 100.000 message | `WARN` | Dữ liệu |
 | `DQ-FRESH-006` | `crt.feedback` | Độ trễ từ `occurred_at` tới `_loaded_at` | ≤ 24 giờ | `INFO` | CX |
 
 ```sql
@@ -246,15 +246,15 @@ WHERE  source_name = 'pos'
 
 | Mã | Đối tượng | Kiểm tra | Ngưỡng | Mức | Chủ |
 |---|---|---|---|---|---|
-| `DQ-SCD-001` | Mọi `dm.dim_*` SCD2 | Lịch sử liền mạch — không hở, không chồng khoảng | 0 vi phạm | `BLOCK` | Data |
-| `DQ-SCD-002` | Mọi `dm.dim_*` SCD2 | Mỗi business key có đúng 1 phiên bản `is_current = 1` | 0 vi phạm | `BLOCK` | Data |
-| `DQ-SCD-003` | 10 dim có khoá đại diện | Tồn tại dòng Unknown `sk = -1` | 0 thiếu | `BLOCK` | Data |
-| `DQ-SCD-004` | 3 dim dùng khoá tự nhiên | `dim_date` có `19000101`, `dim_time` có `0`, `dim_membership_tier` có `tier_code = 'UNKNOWN'` | 0 thiếu | `BLOCK` | Data |
-| `DQ-ALLOC-001` | `dm.bridge_sales_promotion` | Tổng `allocation_factor` theo dòng hoá đơn = 1 | 0 vi phạm | `BLOCK` | Data |
-| `DQ-ALLOC-002` | `crt.invoice_line_promotion` | Tổng `discount_amount` theo dòng hoá đơn khớp `invoice_line.discount_amount` | sai lệch ≤ 1 đồng | `BLOCK` | Data |
-| `DQ-DIM-001` | `dm.dim_booking_junk` | Đủ 80 dòng (79 tổ hợp sinh tự động + dòng Unknown `('unknown',0,0,0,0)`) | 0 thiếu | `BLOCK` | Data |
-| `DQ-DIM-002` | `dm.dim_date` | Có đủ ngày cho `business_date` đang nạp | 0 thiếu | `BLOCK` | Data |
-| `DQ-DIM-003` | `dm.dim_time` | Đủ 1.440 dòng | 0 thiếu | `BLOCK` | Data |
+| `DQ-SCD-001` | Mọi `dm.dim_*` SCD2 | Lịch sử liền mạch — không hở, không chồng khoảng | 0 vi phạm | `BLOCK` | Dữ liệu |
+| `DQ-SCD-002` | Mọi `dm.dim_*` SCD2 | Mỗi nghiệp vụ key có đúng 1 phiên bản `is_current = 1` | 0 vi phạm | `BLOCK` | Dữ liệu |
+| `DQ-SCD-003` | 10 dim có khoá đại diện | Tồn tại dòng Unknown `sk = -1` | 0 thiếu | `BLOCK` | Dữ liệu |
+| `DQ-SCD-004` | 3 dim dùng khoá tự nhiên | `dim_date` có `19000101`, `dim_time` có `0`, `dim_membership_tier` có `tier_code = 'UNKNOWN'` | 0 thiếu | `BLOCK` | Dữ liệu |
+| `DQ-ALLOC-001` | `dm.bridge_sales_promotion` | Tổng `allocation_factor` theo dòng hoá đơn = 1 | 0 vi phạm | `BLOCK` | Dữ liệu |
+| `DQ-ALLOC-002` | `crt.invoice_line_promotion` | Tổng `discount_amount` theo dòng hoá đơn khớp `invoice_line.discount_amount` | sai lệch ≤ 1 đồng | `BLOCK` | Dữ liệu |
+| `DQ-DIM-001` | `dm.dim_booking_junk` | Đủ 80 dòng (79 tổ hợp sinh tự động + dòng Unknown `('unknown',0,0,0,0)`) | 0 thiếu | `BLOCK` | Dữ liệu |
+| `DQ-DIM-002` | `dm.dim_date` | Có đủ ngày cho `business_date` đang nạp | 0 thiếu | `BLOCK` | Dữ liệu |
+| `DQ-DIM-003` | `dm.dim_time` | Đủ 1.440 dòng | 0 thiếu | `BLOCK` | Dữ liệu |
 
 ```sql
 -- DQ-SCD-001: khoảng hở hoặc chồng trong lịch sử SCD2

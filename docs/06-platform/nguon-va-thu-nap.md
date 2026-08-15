@@ -12,8 +12,8 @@ Bốn nhóm nguồn, ba cơ chế thu nạp (theo lô, CDC, streaming), cấu h�
 
 | Nhóm | Định nghĩa | Hệ thống cụ thể | Loại dữ liệu | Đặc tính |
 |---|---|---|---|---|
-| **A. Web / Mobile App** | Nơi phát sinh **hành vi** khách hàng | App iOS/Android, Website | Clickstream event (JSON) | Lượng lớn, bán cấu trúc, **chỉ thêm mới** |
-| **B. OLTP Database** | Nơi lưu **giao dịch nghiệp vụ** chính | PostgreSQL/MySQL của hệ thống booking | Bảng quan hệ | Có cấu trúc, **bị UPDATE/DELETE** |
+| **A. Web / Mobile App** | Nơi phát sinh **hành vi** khách hàng | App iOS/Android, Website | Clickstream sự kiện (JSON) | Lượng lớn, bán cấu trúc, **chỉ thêm mới** |
+| **B. Cơ sở dữ liệu ứng dụng** | Nơi lưu **giao dịch nghiệp vụ** chính, và là nơi dữ liệu được sinh ra | PostgreSQL, schema `app`, 40 bảng — [thiết kế đầy đủ](../../Thiet-Ke-DB-WebApp.md) | Bảng quan hệ 3NF | Có cấu trúc, **bị UPDATE và DELETE** |
 | **C. POS / Salon System** | Dữ liệu phát sinh **tại cửa hàng** | POS ở quầy, phần mềm quản lý buồng | Hoá đơn, check-in, tiêu hao vật tư | Có cấu trúc, **mạng có thể mất → dữ liệu về muộn** |
 | **D. External Systems** | Hệ thống **bên ngoài** | Facebook Ads, Google Ads, GA4, Payment Gateway, CRM, Email/SMS, Tổng đài | API / file export | **Không kiểm soát được schema**, có rate limit, có độ trễ |
 
@@ -24,7 +24,7 @@ Bốn nhóm nguồn, ba cơ chế thu nạp (theo lô, CDC, streaming), cấu h�
 | Entity | Nguồn chính (System of Record) | Nguồn bổ trợ | Xử lý xung đột |
 |---|---|---|---|
 | `customer` | OLTP | App (device, hành vi), POS (khách walk-in), CRM | Gộp theo phone → email → device_id |
-| `booking` | OLTP | App event (`booking_created`), Hotline | OLTP thắng; event dùng để đo độ trễ |
+| `booking` | OLTP | App sự kiện (`booking_created`), Hotline | OLTP thắng; sự kiện dùng để đo độ trễ |
 | `appointment` | POS | OLTP | POS thắng (là nơi thực tế xếp lịch) |
 | `treatment` | POS | — | POS là nguồn duy nhất |
 | `payment` | POS | Payment Gateway | **Bắt buộc đối soát** POS ↔ Gateway hằng ngày |
@@ -39,13 +39,13 @@ Bốn nhóm nguồn, ba cơ chế thu nạp (theo lô, CDC, streaming), cấu h�
 
 ## 2. Ba cơ chế thu nạp
 
-Ingestion là việc đưa dữ liệu từ hệ thống nguồn vào data platform.
+Thu nạp là việc đưa dữ liệu từ hệ thống nguồn vào data platform.
 
 | Cơ chế | Định nghĩa | Dùng khi | Nguồn ở Facial Bar | Công cụ | Độ trễ |
 |---|---|---|---|---|---|
-| **Batch** (theo lô) | Định kỳ lấy trọn một khối dữ liệu | Không cần real-time, nguồn là API/file | Facebook Ads, Google Ads, GA4, danh mục dịch vụ | Airflow + Python/Spark | Giờ → Ngày |
-| **CDC** (Change Data Capture) | Đọc **log thay đổi** của database để bắt từng INSERT/UPDATE/DELETE | Cần biết dữ liệu OLTP thay đổi gì, không muốn quét lại cả bảng | OLTP: customer, booking, payment | Debezium → Kafka | Giây |
-| **Streaming** | Ứng dụng **chủ động đẩy** event ngay khi xảy ra | Event hành vi, cần gần real-time | App event: `service_viewed`, `booking_created`, `feedback_created` | SDK → Kafka | Mili giây → Giây |
+| **Batch** (theo lô) | Định kỳ lấy trọn một khối dữ liệu | Không cần thời gian thực, nguồn là API/file | Facebook Ads, Google Ads, GA4, danh mục dịch vụ | Airflow + Python/Spark | Giờ → Ngày |
+| **CDC** (bắt biến động dữ liệu) | Đọc **log thay đổi** của database để bắt từng INSERT/UPDATE/DELETE | Cần biết dữ liệu OLTP thay đổi gì, không muốn quét lại cả bảng | OLTP: customer, booking, payment | Debezium → Kafka | Giây |
+| **Streaming** | Ứng dụng **chủ động đẩy** sự kiện ngay khi xảy ra | Sự kiện hành vi, cần gần thời gian thực | App sự kiện: `service_viewed`, `booking_created`, `feedback_created` | SDK → Kafka | Mili giây → Giây |
 
 ### CDC — giải thích kỹ vì đây là khái niệm khó nhất
 
@@ -104,18 +104,18 @@ flowchart TD
 
 | Khái niệm | Định nghĩa | Cấu hình cho Facial Bar |
 |---|---|---|
-| **Topic** | Kênh chứa các event cùng loại | `facialbar.booking.v1`, `facialbar.payment.v1`, `facialbar.customer.v1`, `facialbar.feedback.v1`, `facialbar.cdc.booking` |
+| **Topic** | Kênh chứa các sự kiện cùng loại | `facialbar.booking.v1`, `facialbar.payment.v1`, `facialbar.customer.v1`, `facialbar.feedback.v1`, `facialbar.cdc.booking` |
 | **Partition** | Topic được chia nhỏ để xử lý song song | 6 partition/topic, key = `customer_id` |
-| **Partition Key** | Trường quyết định event vào partition nào | Cùng `customer_id` → cùng partition → **đảm bảo đúng thứ tự** cho từng khách |
+| **Partition Key** | Trường quyết định sự kiện vào partition nào | Cùng `customer_id` → cùng partition → **đảm bảo đúng thứ tự** cho từng khách |
 | **Consumer Group** | Nhóm tiến trình cùng đọc 1 topic | `cg-s3-sink`, `cg-realtime-dashboard` |
-| **Retention** | Giữ event bao lâu | 7 ngày (đủ để replay khi pipeline lỗi cuối tuần) |
-| **Schema Registry** | Nơi lưu và kiểm tra schema của event | Avro, chế độ `BACKWARD` |
+| **Retention** | Giữ sự kiện bao lâu | 7 ngày (đủ để replay khi đường ống dữ liệu lỗi cuối tuần) |
+| **Schema Registry** | Nơi lưu và kiểm tra schema của sự kiện | Avro, chế độ `BACKWARD` |
 
-hôm nay dev app đổi `rating` từ số nguyên sang chuỗi. Không có registry → event vẫn được gửi, pipeline xuống hạ nguồn mới vỡ lúc 3 giờ sáng. Có registry → producer bị **chặn ngay tại chỗ** với lỗi rõ ràng.
+hôm nay dev app đổi `rating` từ số nguyên sang chuỗi. Không có registry → sự kiện vẫn được gửi, đường ống dữ liệu xuống hạ nguồn mới vỡ lúc 3 giờ sáng. Có registry → producer bị **chặn ngay tại chỗ** với lỗi rõ ràng.
 
 **Chế độ tương thích `BACKWARD`:** consumer code mới đọc được dữ liệu cũ. Nghĩa là: **được phép thêm** field có giá trị mặc định, **được phép xoá** field không bắt buộc; **không được** đổi kiểu dữ liệu hay đổi tên field.
 
-**Kafka Connect (S3 Sink):** đây là thành phần đưa event từ Kafka xuống S3, phân vùng theo ngày:
+**Kafka Connect (S3 Sink):** đây là thành phần đưa sự kiện từ Kafka xuống S3, phân vùng theo ngày:
 ```
 s3://facialbar-lake/raw/kafka/booking/v1/dt=2026-08-14/hour=09/part-00001.json.gz
 ```
@@ -127,10 +127,10 @@ Kích hoạt ghi file khi đạt 1 trong 3 ngưỡng: 128 MB, 100.000 dòng, ho�
 
 | Câu hỏi | Trả lời |
 |---|---|
-| Data từ đâu? | Web/App, OLTP, POS, External Systems |
-| Data vào bằng cách nào? | Streaming, CDC, Batch, API |
+| Dữ liệu từ đâu? | Web/App, OLTP, POS, External Systems |
+| Dữ liệu vào bằng cách nào? | Streaming, CDC, Batch, API |
 | Dùng công nghệ gì? | Kafka + Schema Registry, Debezium, Kafka Connect, Airflow, Spark/Glue |
-| Data đi đâu? | S3 Data Lake (zone `raw`) |
+| Dữ liệu đi đâu? | S3 hồ dữ liệu (zone `raw`) |
 
 ---
 ---

@@ -1,6 +1,6 @@
 # DDL — Schema `svg_bi` (Serving / Consumption)
 
-Bảng tổng hợp sẵn để dashboard mở dưới 2 giây. Dashboard mở 500 lượt/ngày, mỗi lượt quét fact chi tiết là lãng phí — tính một lần lúc 06:40, đọc 500 lần.
+Bảng tổng hợp sẵn để báo cáo mở dưới 2 giây. Báo cáo mở 500 lượt/ngày, mỗi lượt quét fact chi tiết là lãng phí — tính một lần lúc 06:40, đọc 500 lần.
 
 **Ranh giới bắt buộc:** Superset và Power BI **chỉ** được đọc `dm` và `svg_bi`. Cấm truy cập `lnd`, `crt`, `ctl` — những tầng đó chưa qua cổng kiểm tra chất lượng.
 
@@ -35,7 +35,7 @@ CREATE NONCLUSTERED INDEX IX_bridge_sales_promotion_date
     ON dm.bridge_sales_promotion (service_date_key);
 ```
 
-DQ rule đi kèm — không có nó thì bridge table vô dụng:
+DQ quy tắc đi kèm — không có nó thì bridge table vô dụng:
 
 ```sql
 -- DQ-ALLOC-001: hệ số phân bổ của mỗi dòng hoá đơn phải cộng lại đúng 1
@@ -45,7 +45,7 @@ GROUP  BY invoice_line_id
 HAVING ABS(SUM(allocation_factor) - 1.0) > 0.000001;
 ```
 
-> ⚠️ **Quy tắc dùng bridge — bắt buộc phải viết vào Data Catalog:**
+> ⚠️ **Quy tắc dùng bridge — bắt buộc phải viết vào danh mục dữ liệu:**
 > Join `fact_sales_line` với `bridge_sales_promotion` **sẽ nhân số dòng fact lên** theo số promotion. Sau khi join, **chỉ được** dùng `allocated_discount_amount`; **cấm** dùng `net_amount` (sẽ bị nhân đôi). Đây chính là cái giá phải trả để phân tích được quan hệ nhiều-nhiều, và nó phải được ghi ra thành văn — nếu không, sẽ có người viết `SUM(net_amount)` sau khi join bridge.
 
 ## 2. `agg_revenue_daily_salon` và `agg_customer_360`
@@ -82,7 +82,7 @@ CREATE TABLE svg_bi.agg_revenue_daily_salon (
 ```
 
 > ⚠️ **`unique_customer_count` là cột KHÔNG cộng được** — nó đã bị `DISTINCT` ở mức ngày × salon. Khách đến cả 3 ngày sẽ được đếm 3 lần nếu cộng qua tháng. Đếm số khách duy nhất trong tháng **buộc phải** quay lại `fact_sales_line`.
-> Đây là hạn chế cố hữu của mọi bảng tổng hợp: **`COUNT(DISTINCT ...)` không tổng hợp trước được.** Cách xử lý đúng: đặt tên cột tường minh (`..._count` ở mức grain của bảng), ghi rõ vào catalog, và tạo thêm bảng `agg_revenue_monthly_salon` có cột `unique_customer_count` tính riêng ở mức tháng.
+> Đây là hạn chế cố hữu của mọi bảng tổng hợp: **`COUNT(DISTINCT ...)` không tổng hợp trước được.** Cách xử lý đúng: đặt tên cột tường minh (`..._count` ở mức độ hạt của bảng), ghi rõ vào catalog, và tạo thêm bảng `agg_revenue_monthly_salon` có cột `unique_customer_count` tính riêng ở mức tháng.
 
 ```sql
 -- Bảng chân dung khách hàng: 1 dòng = 1 khách. Dùng cho CRM và làm feature store cho ML.
@@ -127,7 +127,7 @@ Cột `feature_cutoff_date` là điểm nối trực tiếp với nguyên tắc 
 
 ## 3. `agg_funnel_daily` — Phễu chuyển đổi
 
-Grain: 1 dòng = 1 ngày × 1 salon. Nguồn: `fact_booking_lifecycle` + `crt.service_view`.
+độ hạt: 1 dòng = 1 ngày × 1 salon. Nguồn: `fact_booking_lifecycle` + `crt.service_view`.
 
 ```sql
 CREATE TABLE svg_bi.agg_funnel_daily (
@@ -168,7 +168,7 @@ CREATE TABLE svg_bi.agg_funnel_daily (
 
 `CK_agg_funnel_shape` là hàng rào phát hiện lỗi logic nạp: phễu không bao giờ mở rộng ra ở bậc sau.
 
-Bảng này giải bài toán **Booking Conversion** đúng cách: cả tử số và mẫu số đã được đưa về **cùng grain `ngày × salon`**, nên chia trực tiếp là hợp lệ — không còn tình huống chia giữa hai fact khác grain.
+Bảng này giải bài toán **Booking Conversion** đúng cách: cả tử số và mẫu số đã được đưa về **cùng độ hạt `ngày × salon`**, nên chia trực tiếp là hợp lệ — không còn tình huống chia giữa hai fact khác độ hạt.
 
 ```sql
 -- Booking Conversion toàn chuỗi trong tháng
@@ -184,7 +184,7 @@ WHERE  d.year_month = 202608;
 
 ## 4. `agg_service_perf_monthly` — Hiệu quả dịch vụ
 
-Grain: 1 dòng = 1 tháng × 1 salon × 1 dịch vụ.
+độ hạt: 1 dòng = 1 tháng × 1 salon × 1 dịch vụ.
 
 ```sql
 CREATE TABLE svg_bi.agg_service_perf_monthly (
@@ -226,7 +226,7 @@ CREATE TABLE svg_bi.agg_service_perf_monthly (
 
 ## 5. `agg_therapist_utilization_daily` — Năng suất kỹ thuật viên
 
-Grain: 1 dòng = 1 ngày × 1 kỹ thuật viên.
+độ hạt: 1 dòng = 1 ngày × 1 kỹ thuật viên.
 
 ```sql
 CREATE TABLE svg_bi.agg_therapist_utilization_daily (
@@ -261,13 +261,13 @@ CREATE TABLE svg_bi.agg_therapist_utilization_daily (
 );
 ```
 
-> `is_shift_missing` là cột **trung thực về chất lượng dữ liệu**. `available_minutes` lấy từ `lnd.hr_shift` — dữ liệu [chưa có nguồn](../02-mapping/source-to-target.md#phụ-thuộc-bên-ngoài-chưa-có). Ngày nào thiếu lịch làm việc thì mẫu số bằng 0 và Utilization không tính được. Dashboard phải loại các dòng `is_shift_missing = 1` khỏi phép tính và hiển thị rõ số ngày bị loại, thay vì âm thầm cho ra tỷ lệ sai.
+> `is_shift_missing` là cột **trung thực về chất lượng dữ liệu**. `available_minutes` lấy từ `lnd.hr_shift` — dữ liệu [chưa có nguồn](../02-mapping/source-to-target.md#phụ-thuộc-bên-ngoài-chưa-có). Ngày nào thiếu lịch làm việc thì mẫu số bằng 0 và Năng suất không tính được. Báo cáo phải loại các dòng `is_shift_missing = 1` khỏi phép tính và hiển thị rõ số ngày bị loại, thay vì âm thầm cho ra tỷ lệ sai.
 
 ---
 
 ## 6. `agg_cohort_retention` — Giữ chân khách theo nhóm
 
-Grain: 1 dòng = 1 cohort (tháng khách đến lần đầu) × 1 tháng thứ N kể từ đó.
+độ hạt: 1 dòng = 1 nhóm khách theo tháng đến lần đầu × 1 tháng thứ N kể từ đó.
 
 ```sql
 CREATE TABLE svg_bi.agg_cohort_retention (
@@ -301,22 +301,22 @@ GROUP  BY cohort_year_month, cohort_size
 ORDER  BY cohort_year_month;
 ```
 
-> **`cohort_size` cố định theo cohort là điểm dễ làm sai nhất.** Mẫu số phải là số khách của tháng gốc, giữ nguyên qua mọi `month_offset`. Nếu lấy mẫu số là số khách còn hoạt động ở tháng trước thì ra chỉ số khác hoàn toàn (retention theo chuỗi, không phải theo cohort) và không so được với số liệu ngành.
+> **`cohort_size` cố định theo nhóm là điểm dễ làm sai nhất.** Mẫu số phải là số khách của tháng gốc, giữ nguyên qua mọi `month_offset`. Nếu lấy mẫu số là số khách còn hoạt động ở tháng trước thì ra chỉ số khác hoàn toàn (giữ chân theo chuỗi, không phải theo nhóm) và không so được với số liệu ngành.
 >
-> Cohort chưa đủ tuổi không được nạp dòng: cohort tháng 08/2026 chưa có `month_offset = 3` vào tháng 09/2026. Nạp dòng với `active_customer_cnt = 0` sẽ làm biểu đồ tụt xuống 0 một cách sai lệch.
+> Nhóm chưa đủ tuổi không được nạp dòng: nhóm tháng 08/2026 chưa có `month_offset = 3` vào tháng 09/2026. Nạp dòng với `active_customer_cnt = 0` sẽ làm biểu đồ tụt xuống 0 một cách sai lệch.
 
 ---
 
 ## Danh mục bảng
 
-| # | Bảng | Grain | Dòng/năm (20 salon) | Nguồn |
+| # | Bảng | độ hạt | Dòng/năm (20 salon) | Nguồn |
 |---|---|---|---|---|
 | 1 | `agg_revenue_daily_salon` | ngày × salon | ~7.000 | `fact_sales_line`, `fact_payment`, `fact_appointment`, `fact_feedback` |
 | 2 | `agg_customer_360` | 1 khách | ~35.000 | Nhiều fact + ML |
 | 3 | `agg_funnel_daily` | ngày × salon | ~7.000 | `fact_booking_lifecycle`, `crt.service_view` |
 | 4 | `agg_service_perf_monthly` | tháng × salon × dịch vụ | ~36.000 | `fact_sales_line`, `fact_treatment`, `fact_feedback` |
 | 5 | `agg_therapist_utilization_daily` | ngày × KTV | ~140.000 | `fact_treatment`, `lnd.hr_shift` |
-| 6 | `agg_cohort_retention` | cohort × tháng thứ N | ~2.000 | `fact_sales_line` |
+| 6 | `agg_cohort_retention` | nhóm theo tháng đến lần đầu × tháng thứ N | ~2.000 | `fact_sales_line` |
 
 **Tổng: 6 bảng `svg_bi`**, chưa tính `dm.bridge_sales_promotion` ở mục 1. Toàn bộ dùng rowstore clustered — bảng nhỏ, truy vấn theo khoảng ngày, không cần columnstore.
 
@@ -325,7 +325,7 @@ ORDER  BY cohort_year_month;
 | # | Nguyên tắc | Lý do |
 |---|---|---|
 | 1 | **Không lưu tỷ lệ.** Chỉ lưu tử số và mẫu số | Tỷ lệ là non-additive; `AVG` của tỷ lệ cho kết quả sai lệch nhiều lần |
-| 2 | Cột `COUNT(DISTINCT ...)` đặt tên rõ grain và ghi cảnh báo vào catalog | Không tổng hợp tiếp lên mức cao hơn được |
+| 2 | Cột `COUNT(DISTINCT ...)` đặt tên rõ độ hạt và ghi cảnh báo vào catalog | Không tổng hợp tiếp lên mức cao hơn được |
 | 3 | Có `CHECK` kiểm tra hình dạng dữ liệu (phễu thu hẹp, tỷ lệ trong biên) | Bắt lỗi logic nạp ngay tại database |
 | 4 | Có cột cờ trung thực về chất lượng dữ liệu (`is_shift_missing`) | Thà báo "không tính được" hơn là cho ra số sai |
 | 5 | Đối chiếu tổng với fact nguồn sau mỗi lần làm mới | `DQ-RECON-004` |

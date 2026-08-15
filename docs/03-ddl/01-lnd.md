@@ -6,7 +6,7 @@ Vùng đệm tiếp nhận dữ liệu từ `cleansed` trên S3 vào SQL Server.
 |---|---|---|
 | Cấu trúc lưu | **Heap** — không index, không PK | Chỉ ghi một lần rồi đọc một lần; index chỉ làm chậm nạp |
 | Chế độ nạp | **Ghi đè** toàn bộ theo mỗi lần chạy | Lịch sử đã nằm ở S3, giữ lại đây là trùng lặp |
-| Kiểu dữ liệu | `NVARCHAR` cho **mọi** cột nghiệp vụ | Bảng này **không bao giờ được fail lúc nạp**. Sai kiểu để tầng `crt` bắt với thông báo rõ ràng |
+| Kiểu dữ liệu | `NVARCHAR` cho **mọi** cột nghiệp vụ | Bảng này **không bao giờ được không đạt lúc nạp**. Sai kiểu để tầng `crt` bắt với thông báo rõ ràng |
 | Ràng buộc | Không có `NOT NULL`, `CHECK`, `FK` | Cùng lý do trên |
 | Recovery | Bảng có thể `TRUNCATE` bất kỳ lúc nào | Dựng lại được từ `cleansed` |
 
@@ -121,9 +121,9 @@ CREATE TABLE lnd.pos_revenue_control (
 );
 ```
 
-> **Trạng thái: chờ nhà cung cấp POS.** Cần yêu cầu POS xuất tệp tổng doanh thu theo ngày × chi nhánh, cùng cách tính doanh thu thuần mà họ dùng. Nếu POS chỉ xuất được doanh thu gộp thì phải thống nhất lại công thức trước khi đối soát, vì so doanh thu gộp của POS với doanh thu thuần của kho sẽ luôn lệch. Đây là điều kiện tiên quyết đã nêu ở [bản trình phê duyệt mục 11](../../Ban-Thiet-Ke-CSDL.md#11-rủi-ro-và-biện-pháp-kiểm-soát).
+> **Trạng thái: chờ nhà cung cấp POS.** Cần yêu cầu POS xuất tệp tổng doanh thu theo ngày × chi nhánh, cùng cách tính doanh thu thuần mà họ dùng. Nếu POS chỉ xuất được doanh thu gộp thì phải thống nhất lại công thức trước khi đối soát, vì so doanh thu gộp của POS với doanh thu thuần của kho sẽ luôn lệch. Đây là điều kiện tiên quyết đã nêu ở [bản trình phê duyệt mục 11](../../Ban-Thiet-Ke-CSDL.md#6-rủi-ro-và-điều-kiện-tiên-quyết).
 
-> `lnd.hr_shift` là nguồn của `available_minutes` — mẫu số của Therapist Utilization và Bed Occupancy. Đây là dữ liệu **chưa có** ở thời điểm viết tài liệu; xem [phụ thuộc bên ngoài](../02-mapping/source-to-target.md#phụ-thuộc-bên-ngoài-chưa-có).
+> `lnd.hr_shift` là nguồn của `available_minutes` — mẫu số của Therapist Năng suất và Bed Occupancy. Đây là dữ liệu **chưa có** ở thời điểm viết tài liệu; xem [phụ thuộc bên ngoài](../02-mapping/source-to-target.md#phụ-thuộc-bên-ngoài-chưa-có).
 
 ---
 
@@ -148,7 +148,7 @@ def gen_lnd_ddl(table_name: str, columns: list[str]) -> str:
     )
 ```
 
-Độ rộng `NVARCHAR(4000)` là cố ý: bảng này không được fail vì dữ liệu dài quá dự kiến. Chi phí dung lượng không đáng kể vì bảng bị ghi đè mỗi lần chạy.
+Độ rộng `NVARCHAR(4000)` là cố ý: bảng này không được không đạt vì dữ liệu dài quá dự kiến. Chi phí dung lượng không đáng kể vì bảng bị ghi đè mỗi lần chạy.
 
 ## Nạp và dọn
 

@@ -1,6 +1,6 @@
-# DDL — Schema `ctl` (Control) và `qtn` (Quarantine)
+# DDL — Schema `ctl` (Control) và `qtn` (Vùng cách ly)
 
-Hai schema không chứa dữ liệu nghiệp vụ. `ctl` chứa thông tin về **chính pipeline**; `qtn` chứa **dòng dữ liệu bị từ chối**.
+Hai schema không chứa dữ liệu nghiệp vụ. `ctl` chứa thông tin về **chính đường ống dữ liệu**; `qtn` chứa **dòng dữ liệu bị từ chối**.
 
 Không có hai schema này thì khi được hỏi *"số liệu hôm nay đã đủ chưa"* sẽ không có câu trả lời nào ngoài phỏng đoán.
 
@@ -10,7 +10,7 @@ Không có hai schema này thì khi được hỏi *"số liệu hôm nay đã �
 
 ### `ctl.pipeline_run`
 
-Grain: 1 dòng = 1 lần chạy 1 task.
+độ hạt: 1 dòng = 1 lần chạy 1 task.
 
 ```sql
 CREATE TABLE ctl.pipeline_run (
@@ -43,7 +43,7 @@ CREATE INDEX IX_ctl_run_status  ON ctl.pipeline_run (status, started_at)
 
 ### `ctl.watermark`
 
-Grain: 1 dòng = 1 cặp (nguồn, entity).
+độ hạt: 1 dòng = 1 cặp (nguồn, entity).
 
 ```sql
 CREATE TABLE ctl.watermark (
@@ -79,7 +79,7 @@ VALUES ('pos',  'invoice',       'PARTITION', '1900-01-01'),
 
 ### `ctl.load_audit`
 
-Grain: 1 dòng = 1 file đã nạp. Đây là hàng rào chống nạp lại cùng một file hai lần.
+độ hạt: 1 dòng = 1 file đã nạp. Đây là hàng rào chống nạp lại cùng một file hai lần.
 
 ```sql
 CREATE TABLE ctl.load_audit (
@@ -103,11 +103,11 @@ CREATE TABLE ctl.load_audit (
 CREATE INDEX IX_ctl_audit_path ON ctl.load_audit (file_path);
 ```
 
-> `UQ_ctl_audit_hash` dùng **hash nội dung**, không dùng đường dẫn. Nguồn đổi tên file rồi gửi lại cùng nội dung vẫn bị chặn. Đây là lớp phòng thứ hai, sau `UNIQUE` trên grain của bảng fact.
+> `UQ_ctl_audit_hash` dùng **hash nội dung**, không dùng đường dẫn. Nguồn đổi tên file rồi gửi lại cùng nội dung vẫn bị chặn. Đây là lớp phòng thứ hai, sau `UNIQUE` trên độ hạt của bảng fact.
 
 ### `ctl.dq_result`
 
-Grain: 1 dòng = 1 lần chạy 1 quy tắc.
+độ hạt: 1 dòng = 1 lần chạy 1 quy tắc.
 
 ```sql
 CREATE TABLE ctl.dq_result (
@@ -165,7 +165,7 @@ CREATE TABLE ctl.dq_rule (
 );
 ```
 
-Nội dung khởi tạo: [Catalog DQ rule](../05-quality/dq-rules.md).
+Nội dung khởi tạo: [danh mục DQ quy tắc](../05-quality/dq-rules.md).
 
 ### `ctl.vn_holiday`
 
@@ -314,7 +314,7 @@ Ba quy tắc mức `BLOCK` của nhóm `SCD` được gọi ngay sau khi dựng 
 
 ### `qtn.reject_row`
 
-Grain: 1 dòng = 1 dòng dữ liệu bị từ chối bởi một quy tắc.
+độ hạt: 1 dòng = 1 dòng dữ liệu bị từ chối bởi một quy tắc.
 
 ```sql
 CREATE TABLE qtn.reject_row (
@@ -400,12 +400,12 @@ GROUP BY  r.entity_name, r.rule_id, d.rule_name, d.owner_role, d.severity;
 
 ## Danh mục bảng
 
-| # | Bảng | Grain | Dòng/năm (20 salon) |
+| # | Bảng | độ hạt | Dòng/năm (20 salon) |
 |---|---|---|---|
 | 1 | `ctl.pipeline_run` | 1 lần chạy 1 task | ~15.000 |
 | 2 | `ctl.watermark` | 1 (nguồn, entity) | ~30 (không tăng) |
 | 3 | `ctl.load_audit` | 1 file đã nạp | ~40.000 |
-| 4 | `ctl.dq_result` | 1 lần chạy 1 rule | ~50.000 |
+| 4 | `ctl.dq_result` | 1 lần chạy 1 quy tắc | ~50.000 |
 | 5 | `ctl.dq_rule` | 1 quy tắc | ~60 (không tăng) |
 | 6 | `ctl.vn_holiday` | 1 ngày lễ | ~15 |
 | 7 | `ctl.code_mapping` | 1 cặp ánh xạ | ~200 |
